@@ -36,10 +36,7 @@ func (p *partialHandler) handleSidebar(w http.ResponseWriter, r *http.Request) {
 }
 
 func (p *partialHandler) handleEmpty(w http.ResponseWriter, r *http.Request) {
-	data := map[string]interface{}{
-		"DocsHTML": RenderDocsHTML(HomebaseAPIDoc),
-	}
-	renderPartial(w, "templates/partials/_empty.html", "empty", data)
+	renderPartial(w, "templates/partials/_empty.html", "empty", nil)
 }
 
 func (p *partialHandler) handleDeviceDetail(w http.ResponseWriter, r *http.Request) {
