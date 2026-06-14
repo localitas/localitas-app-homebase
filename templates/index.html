@@ -239,7 +239,7 @@
         (function() {
             var html = document.documentElement;
             var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-            var saved = localStorage.getItem('theme') || (prefersDark ? 'dark' : 'light');
+            var saved = prefersDark ? 'dark' : 'light';
             html.setAttribute('data-theme', saved);
             window.addEventListener('message', function(e) {
                 if (e.data && e.data.type === 'theme-change') html.setAttribute('data-theme', e.data.theme);
