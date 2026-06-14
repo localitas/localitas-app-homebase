@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"flag"
 	"fmt"
 	"log"
 	"net"
@@ -11,8 +10,9 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/localitas/localitas-app-homebase"
+	homebase "github.com/localitas/localitas-app-homebase"
 	"github.com/localitas/localitas-go"
+	"github.com/urfave/cli/v3"
 )
 
 var (
@@ -28,64 +28,99 @@ func envOrFileToken() string {
 }
 
 func main() {
-	if len(os.Args) > 1 && (os.Args[1] == "--version" || os.Args[1] == "version") {
-		fmt.Printf("homebase-server %s (commit: %s)\n", version, commit)
-		os.Exit(0)
+	app := &cli.Command{
+		Name:    "homebase-server",
+		Usage:   "Homebase IoT control panel",
+		Version: version,
+		Commands: []*cli.Command{
+			serveCommand(),
+			migrateCommand(),
+		},
+		DefaultCommand: "serve",
+		Action: func(ctx context.Context, cmd *cli.Command) error {
+			return serveAction(ctx, cmd)
+		},
 	}
 
-	var (
-		listen     = flag.String("listen", ":0", "listen address (default :0 = random port)")
-		coreURL    = flag.String("core-url", client.DefaultCoreURL(), "base URL of the Localitas core API")
-		basePath   = flag.String("base-path", "/", "URL prefix for <base href>")
-		token      = flag.String("token", envOrFileToken(), "bearer token for install + SQL driver")
-		sidecarURL = flag.String("sidecar-url", "http://localhost:9222", "URL of the Matter sidecar")
-		hapPin     = flag.String("hap-pin", "00102003", "HomeKit pairing PIN")
-		hapStorage = flag.String("hap-storage", os.ExpandEnv("$HOME/.localitas/homebase/hap"), "HAP persistent storage directory")
-	)
-	flag.Parse()
-
-	ctx := context.Background()
-	c := client.New(*coreURL)
-	if *token != "" {
-		c = c.WithToken(*token)
+	if err := app.Run(context.Background(), os.Args); err != nil {
+		log.Fatal(err)
 	}
+}
 
-	app := homebase.New(c, *basePath, *sidecarURL)
+func commonFlags() []cli.Flag {
+	return []cli.Flag{
+		&cli.StringFlag{Name: "listen", Value: ":0", Usage: "listen address"},
+		&cli.StringFlag{Name: "core-url", Value: client.DefaultCoreURL(), Usage: "base URL of the Localitas core API"},
+		&cli.StringFlag{Name: "base-path", Value: "/", Usage: "URL prefix for <base href>"},
+		&cli.StringFlag{Name: "token", Value: envOrFileToken(), Usage: "bearer token for API calls"},
+		&cli.StringFlag{Name: "sidecar-url", Value: "http://localhost:9222", Usage: "URL of the Matter sidecar"},
+		&cli.StringFlag{Name: "hap-pin", Value: "00102003", Usage: "HomeKit pairing PIN"},
+		&cli.StringFlag{Name: "hap-storage", Value: os.ExpandEnv("$HOME/.localitas/homebase/hap"), Usage: "HAP persistent storage directory"},
+	}
+}
 
-	dbID, err := app.Install(ctx)
+func newClient(cmd *cli.Command) *client.Client {
+	c := client.New(cmd.String("core-url"))
+	if t := cmd.String("token"); t != "" {
+		c = c.WithToken(t)
+	}
+	return c
+}
+
+func serveCommand() *cli.Command {
+	return &cli.Command{
+		Name:   "serve",
+		Usage:  "Start the Homebase server",
+		Flags:  commonFlags(),
+		Action: serveAction,
+	}
+}
+
+func serveAction(ctx context.Context, cmd *cli.Command) error {
+	coreURL := cmd.String("core-url")
+	basePath := cmd.String("base-path")
+	token := cmd.String("token")
+	sidecarURL := cmd.String("sidecar-url")
+	hapPin := cmd.String("hap-pin")
+	hapStorage := cmd.String("hap-storage")
+	c := newClient(cmd)
+
+	a := homebase.New(c, basePath, sidecarURL)
+
+	dbID, err := a.Install(ctx)
 	if err != nil {
-		log.Fatalf("install: %v", err)
+		return fmt.Errorf("install: %w", err)
 	}
 	log.Printf("Homebase database ready: %s", dbID)
 
-	if err := app.InitStore(*coreURL, dbID, *token); err != nil {
-		log.Fatalf("init store: %v", err)
+	if err := a.InitStore(coreURL, dbID, token); err != nil {
+		return fmt.Errorf("init store: %w", err)
 	}
-	defer app.Store.Close()
+	defer a.Store.Close()
 
-	hapBridge := homebase.NewHAPBridge(app.Sidecar, app.Store, *hapPin, *hapStorage)
-	app.HAP = hapBridge
+	hapBridge := homebase.NewHAPBridge(a.Sidecar, a.Store, hapPin, hapStorage)
+	a.HAP = hapBridge
 
 	hapCtx, hapCancel := context.WithCancel(ctx)
 	defer hapCancel()
 	if err := hapBridge.Start(hapCtx); err != nil {
 		log.Printf("HAP bridge failed to start: %v", err)
 	} else {
-		log.Printf("HAP bridge started (PIN: %s)", *hapPin)
+		log.Printf("HAP bridge started (PIN: %s)", hapPin)
 	}
 
-	pluginDiscovery := homebase.NewPluginDiscovery(app.Store, hapBridge)
-	app.Plugins = pluginDiscovery
+	pluginDiscovery := homebase.NewPluginDiscovery(a.Store, hapBridge)
+	a.Plugins = pluginDiscovery
 	pluginDiscovery.Start(hapCtx)
 	log.Printf("Plugin discovery started")
 
 	mux := http.NewServeMux()
-	app.RegisterRoutes(mux)
+	a.RegisterRoutes(mux)
 	mux.HandleFunc("GET /health.json", homebase.HandleHealth)
 
-	ln, err := net.Listen("tcp", *listen)
+	ln, err := net.Listen("tcp", cmd.String("listen"))
 	if err != nil {
-		log.Fatalf("listen: %v", err)
+		return fmt.Errorf("listen: %w", err)
 	}
 	addr := ln.Addr().(*net.TCPAddr)
 	fmt.Printf("homebase-server listening on http://localhost:%d\n", addr.Port)
@@ -112,7 +147,23 @@ func main() {
 		os.Exit(0)
 	}()
 
-	if err := http.Serve(ln, mux); err != nil {
-		log.Fatalf("serve: %v", err)
+	return http.Serve(ln, mux)
+}
+
+func migrateCommand() *cli.Command {
+	return &cli.Command{
+		Name:  "migrate",
+		Usage: "Run database migrations without starting the server",
+		Flags: commonFlags(),
+		Action: func(ctx context.Context, cmd *cli.Command) error {
+			c := newClient(cmd)
+			a := homebase.New(c, "/", "http://localhost:9222")
+			dbID, err := a.Install(ctx)
+			if err != nil {
+				return fmt.Errorf("migrate: %w", err)
+			}
+			log.Printf("Homebase migrations complete (database: %s)", dbID)
+			return nil
+		},
 	}
 }
