@@ -1,0 +1,39 @@
+{{define "sidebar_list"}}
+<div class="sidebar-list" id="homebase-sidebar-list">
+    {{range .Rooms}}
+    <div class="room-group-title">{{if .Name}}{{.Name}}{{else}}Unassigned{{end}}</div>
+    {{range .Devices}}
+    <div class="sidebar-item {{if eq $.SelectedID .ID}}active-purple{{end}}"
+         hx-get="partials/device/{{.ID}}"
+         hx-target="#main-widget-container"
+         hx-swap="innerHTML"
+         hx-push-url="?id={{.ID}}">
+        <div style="flex-shrink: 0;">
+            {{if eq .DeviceType "switch"}}<i data-lucide="toggle-left" style="width: 16px; height: 16px;"></i>
+            {{else if eq .DeviceType "dimmable_light"}}<i data-lucide="lightbulb" style="width: 16px; height: 16px;"></i>
+            {{else if eq .DeviceType "color_light"}}<i data-lucide="palette" style="width: 16px; height: 16px;"></i>
+            {{else if eq .DeviceType "thermostat"}}<i data-lucide="thermometer" style="width: 16px; height: 16px;"></i>
+            {{else if eq .DeviceType "lock"}}<i data-lucide="lock" style="width: 16px; height: 16px;"></i>
+            {{else if eq .DeviceType "fan"}}<i data-lucide="fan" style="width: 16px; height: 16px;"></i>
+            {{else if eq .DeviceType "temperature_sensor"}}<i data-lucide="thermometer" style="width: 16px; height: 16px;"></i>
+            {{else if eq .DeviceType "occupancy_sensor"}}<i data-lucide="scan-eye" style="width: 16px; height: 16px;"></i>
+            {{else}}<i data-lucide="cpu" style="width: 16px; height: 16px;"></i>
+            {{end}}
+        </div>
+        <div style="flex: 1; min-width: 0;">
+            <div style="font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{.Name}}</div>
+            <div class="device-meta">
+                {{if .Virtual}}<span class="status-dot virtual"></span> Virtual{{else if .Online}}<span class="status-dot online"></span> Online{{else}}<span class="status-dot offline"></span> Offline{{end}}
+            </div>
+        </div>
+    </div>
+    {{end}}
+    {{end}}
+    {{if not .Rooms}}
+    <div class="text-center py-8 text-secondary">
+        <i data-lucide="home" class="w-8 h-8 mx-auto mb-2 opacity-50"></i>
+        <p style="font-size: 0.875rem;">No devices yet</p>
+    </div>
+    {{end}}
+</div>
+{{end}}

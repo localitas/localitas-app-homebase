@@ -1,0 +1,75 @@
+{{define "add_form"}}
+<div class="main-widget-header">
+    <button id="toggle-sidebar" class="menu-btn" onclick="document.getElementById('homebase-sidebar').classList.toggle('hidden')">
+        <i data-lucide="menu" class="w-5 h-5"></i>
+    </button>
+    <span class="text-primary font-medium">Add Device</span>
+</div>
+<div class="flex-1 overflow-y-auto glass-scrollbar" style="padding: 1.5rem;">
+    <div style="max-width: 480px; margin: 0 auto;">
+        <div class="glass-panel" style="border-radius: 0.75rem; padding: 1.25rem; margin-bottom: 1.5rem;">
+            <h3 style="font-size: 1rem; font-weight: 600; margin: 0 0 0.25rem 0;">
+                <i data-lucide="radio" style="width: 18px; height: 18px; display: inline; vertical-align: middle; margin-right: 0.25rem;"></i>
+                Commission Matter Device
+            </h3>
+            <p style="font-size: 0.8125rem; color: var(--color-text-secondary); margin: 0 0 1rem 0;">
+                Add a real Matter/Thread device to your fabric.
+            </p>
+            <form hx-post="partials/commission"
+                  hx-target="#main-widget-container"
+                  hx-swap="innerHTML">
+                <div class="form-group">
+                    <label class="form-label">Setup Code</label>
+                    <input type="text" name="setup_code" placeholder="e.g. 34970112332" class="form-input" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Name</label>
+                    <input type="text" name="name" placeholder="e.g. Kitchen Light" class="form-input" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Room (optional)</label>
+                    <input type="text" name="room" placeholder="e.g. Kitchen" class="form-input">
+                </div>
+                <button type="submit" class="btn btn-primary">
+                    <i data-lucide="wifi" class="w-4 h-4"></i> Commission
+                </button>
+            </form>
+        </div>
+
+        <div class="glass-panel" style="border-radius: 0.75rem; padding: 1.25rem;">
+            <h3 style="font-size: 1rem; font-weight: 600; margin: 0 0 0.25rem 0;">
+                <i data-lucide="box" style="width: 18px; height: 18px; display: inline; vertical-align: middle; margin-right: 0.25rem;"></i>
+                Create Virtual Device
+            </h3>
+            <p style="font-size: 0.8125rem; color: var(--color-text-secondary); margin: 0 0 1rem 0;">
+                Create a dummy switch visible in HomeKit. Useful for testing and automation triggers.
+            </p>
+            <form hx-post="partials/create-virtual"
+                  hx-target="#main-widget-container"
+                  hx-swap="innerHTML">
+                <div class="form-group">
+                    <label class="form-label">Name</label>
+                    <input type="text" name="name" placeholder="e.g. Test Switch" class="form-input" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Type</label>
+                    <select name="device_type" class="form-input">
+                        <option value="switch">Switch</option>
+                        <option value="dimmable_light">Dimmable Light</option>
+                        <option value="color_light">Color Light</option>
+                        <option value="fan">Fan</option>
+                        <option value="lock">Lock</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Room (optional)</label>
+                    <input type="text" name="room" placeholder="e.g. Office" class="form-input">
+                </div>
+                <button type="submit" class="btn btn-primary">
+                    <i data-lucide="plus" class="w-4 h-4"></i> Create Virtual Device
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+{{end}}

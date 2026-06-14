@@ -1,0 +1,59 @@
+{{define "plugin_settings"}}
+<div class="main-widget-header">
+    <button id="toggle-sidebar" class="menu-btn" onclick="document.getElementById('homebase-sidebar').classList.toggle('hidden')">
+        <i data-lucide="menu" class="w-5 h-5"></i>
+    </button>
+    <span class="text-primary font-medium">Plugins</span>
+</div>
+<div class="flex-1 overflow-y-auto glass-scrollbar" style="padding: 1.5rem;">
+    <div style="max-width: 640px; margin: 0 auto;">
+        {{range .Plugins}}
+        <div class="glass-panel" style="border-radius: 0.75rem; padding: 1.25rem; margin-bottom: 1rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                <div>
+                    <h3 style="font-size: 1rem; font-weight: 600; margin: 0;">
+                        <i data-lucide="plug" style="width: 16px; height: 16px; display: inline; vertical-align: middle; margin-right: 0.25rem;"></i>
+                        {{.Health.DisplayName}}
+                    </h3>
+                    <div style="font-size: 0.75rem; color: var(--color-text-secondary);">{{.Name}} · {{.URL}}</div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 0.375rem; font-size: 0.8125rem;">
+                    <span class="status-dot online"></span> Connected
+                </div>
+            </div>
+
+            <form hx-put="partials/plugin-credential/{{.Name}}"
+                  hx-target="#main-widget-container"
+                  hx-swap="innerHTML">
+                <div class="form-group">
+                    <label class="form-label">Vault Credential ID</label>
+                    <input type="text" name="vault_public_id"
+                           value="{{index $.Credentials .Name}}"
+                           placeholder="Paste vault public ID for this plugin"
+                           class="form-input" required>
+                </div>
+                <div style="display: flex; gap: 0.5rem;">
+                    <button type="submit" class="btn btn-primary">
+                        <i data-lucide="key" class="w-4 h-4"></i> Save Credential
+                    </button>
+                    {{if index $.Credentials .Name}}
+                    <button type="button" class="btn btn-danger"
+                            hx-delete="partials/plugin-credential/{{.Name}}"
+                            hx-target="#main-widget-container"
+                            hx-swap="innerHTML">
+                        <i data-lucide="trash-2" class="w-4 h-4"></i>
+                    </button>
+                    {{end}}
+                </div>
+            </form>
+        </div>
+        {{else}}
+        <div style="text-align: center; padding: 3rem; color: var(--color-text-secondary);">
+            <i data-lucide="plug" style="width: 48px; height: 48px; margin: 0 auto 1rem; display: block;"></i>
+            <p>No plugins discovered yet.</p>
+            <p style="font-size: 0.8125rem;">Start a homebase plugin (e.g. homebase-ring) and it will appear here automatically via mDNS.</p>
+        </div>
+        {{end}}
+    </div>
+</div>
+{{end}}

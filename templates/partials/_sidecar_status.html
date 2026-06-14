@@ -1,0 +1,4 @@
+{{define "sidecar_status"}}
+<span class="status-dot {{if .Healthy}}online{{else}}offline{{end}}"></span>
+Matter Sidecar: {{if .Healthy}}Connected{{else}}Disconnected{{end}}
+{{end}}

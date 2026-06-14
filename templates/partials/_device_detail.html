@@ -1,0 +1,108 @@
+{{define "device_detail"}}
+<div class="main-widget-header">
+    <button id="toggle-sidebar" class="menu-btn" onclick="document.getElementById('homebase-sidebar').classList.toggle('hidden')">
+        <i data-lucide="menu" class="w-5 h-5"></i>
+    </button>
+    <span class="text-primary font-medium flex-1">{{.Device.Name}}</span>
+    <button class="header-btn btn-danger"
+            hx-delete="partials/device/{{.Device.ID}}"
+            hx-target="#main-widget-container"
+            hx-swap="innerHTML"
+            hx-confirm="Remove {{.Device.Name}}?"
+            title="Remove Device">
+        <i data-lucide="trash-2" class="w-4 h-4"></i>
+    </button>
+</div>
+<div class="flex-1 overflow-y-auto glass-scrollbar" style="padding: 1.5rem;">
+    <div style="max-width: 640px; margin: 0 auto;">
+        <div class="glass-panel" style="border-radius: 0.75rem; padding: 1.25rem; margin-bottom: 1rem;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem;">
+                <div>
+                    <h3 style="font-size: 1.125rem; font-weight: 600; margin: 0 0 0.25rem 0;">{{.Device.Name}}</h3>
+                    <div class="device-meta">
+                        {{if .Device.Virtual}}<span class="status-dot virtual"></span> Virtual
+                        {{else if .Device.Online}}<span class="status-dot online"></span> Online
+                        {{else}}<span class="status-dot offline"></span> Offline
+                        {{end}}
+                        · {{.Device.DeviceType}}
+                    </div>
+                </div>
+                <div style="text-align: right; font-size: 0.75rem; color: var(--color-text-secondary);">
+                    {{if .Device.Room}}<div>Room: {{.Device.Room}}</div>{{end}}
+                    {{if .Device.Vendor}}<div>{{.Device.Vendor}}</div>{{end}}
+                    {{if .Device.Model}}<div>{{.Device.Model}}</div>{{end}}
+                </div>
+            </div>
+            <div style="margin-bottom: 0.75rem;">
+                <div style="font-size: 0.75rem; font-weight: 600; color: var(--color-text-secondary); margin-bottom: 0.375rem;">CLUSTERS</div>
+                {{range .Device.Clusters}}
+                <span class="cluster-badge">{{.}}</span>
+                {{end}}
+            </div>
+        </div>
+
+        <div class="glass-panel" style="border-radius: 0.75rem; padding: 1.25rem; margin-bottom: 1rem;">
+            <h4 style="font-size: 0.875rem; font-weight: 600; margin: 0 0 0.75rem 0;">Edit</h4>
+            <form hx-put="partials/device/{{.Device.ID}}"
+                  hx-target="#main-widget-container"
+                  hx-swap="innerHTML">
+                <div class="form-group">
+                    <label class="form-label">Name</label>
+                    <input type="text" name="name" value="{{.Device.Name}}" class="form-input">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Room</label>
+                    <input type="text" name="room" value="{{.Device.Room}}" class="form-input">
+                </div>
+                <button type="submit" class="btn btn-primary">
+                    <i data-lucide="save" class="w-4 h-4"></i> Save
+                </button>
+            </form>
+        </div>
+
+        {{if not .Device.Virtual}}
+        <div class="glass-panel" style="border-radius: 0.75rem; padding: 1.25rem; margin-bottom: 1rem;">
+            <h4 style="font-size: 0.875rem; font-weight: 600; margin: 0 0 0.75rem 0;">Quick Actions</h4>
+            <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
+                {{range .Device.Clusters}}
+                {{if eq . "OnOff"}}
+                <button class="btn"
+                        hx-post="api/devices/{{$.Device.ID}}/command"
+                        hx-vals='{"cluster":"OnOff","command":"On"}'
+                        hx-swap="none">
+                    <i data-lucide="power" class="w-4 h-4"></i> On
+                </button>
+                <button class="btn"
+                        hx-post="api/devices/{{$.Device.ID}}/command"
+                        hx-vals='{"cluster":"OnOff","command":"Off"}'
+                        hx-swap="none">
+                    <i data-lucide="power-off" class="w-4 h-4"></i> Off
+                </button>
+                <button class="btn"
+                        hx-post="api/devices/{{$.Device.ID}}/command"
+                        hx-vals='{"cluster":"OnOff","command":"Toggle"}'
+                        hx-swap="none">
+                    <i data-lucide="toggle-left" class="w-4 h-4"></i> Toggle
+                </button>
+                {{end}}
+                {{if eq . "DoorLock"}}
+                <button class="btn"
+                        hx-post="api/devices/{{$.Device.ID}}/command"
+                        hx-vals='{"cluster":"DoorLock","command":"LockDoor"}'
+                        hx-swap="none">
+                    <i data-lucide="lock" class="w-4 h-4"></i> Lock
+                </button>
+                <button class="btn"
+                        hx-post="api/devices/{{$.Device.ID}}/command"
+                        hx-vals='{"cluster":"DoorLock","command":"UnlockDoor"}'
+                        hx-swap="none">
+                    <i data-lucide="unlock" class="w-4 h-4"></i> Unlock
+                </button>
+                {{end}}
+                {{end}}
+            </div>
+        </div>
+        {{end}}
+    </div>
+</div>
+{{end}}
