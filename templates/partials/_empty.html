@@ -19,6 +19,12 @@
                     <i data-lucide="plus" class="w-4 h-4"></i> Add Device
                 </button>
             </div>
+            <p style="margin-top: 1rem;">
+                <a onclick="fetch('/apps/homebase/help?format=html',{headers:typeof getGlobalAuthHeaders==='function'?getGlobalAuthHeaders():{}}).then(r=>r.text()).then(h=>{document.getElementById('main-widget-container').innerHTML=h})"
+                   style="color: var(--color-accent); cursor: pointer; font-size: 0.875rem;">
+                    <i data-lucide="book-open" style="width: 14px; height: 14px; display: inline; vertical-align: middle; margin-right: 0.25rem;"></i>Documentation
+                </a>
+            </p>
         </div>
     </div>
 </div>
