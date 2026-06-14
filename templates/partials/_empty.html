@@ -11,20 +11,17 @@
             <i data-lucide="home" style="width: 48px; height: 48px; color: var(--color-accent); margin: 0 auto 0.75rem; display: block;"></i>
             <h2 style="font-size: 1.25rem; font-weight: 600; color: var(--color-text-primary); margin-bottom: 0.5rem;">Homebase</h2>
             <p style="color: var(--color-text-secondary); margin-bottom: 1rem;">Matter smart home control panel</p>
-            <div style="display: flex; gap: 0.5rem; justify-content: center;">
+            <div style="display: flex; gap: 0.75rem; justify-content: center;">
                 <button class="btn btn-primary"
                         hx-get="partials/add-form"
                         hx-target="#main-widget-container"
                         hx-swap="innerHTML">
                     <i data-lucide="plus" class="w-4 h-4"></i> Add Device
                 </button>
-            </div>
-            <p style="margin-top: 1rem;">
-                <a onclick="fetch('/apps/homebase/help?format=html',{headers:typeof getGlobalAuthHeaders==='function'?getGlobalAuthHeaders():{}}).then(r=>r.text()).then(h=>{document.getElementById('main-widget-container').innerHTML=h})"
-                   style="color: var(--color-accent); cursor: pointer; font-size: 0.875rem;">
-                    <i data-lucide="book-open" style="width: 14px; height: 14px; display: inline; vertical-align: middle; margin-right: 0.25rem;"></i>Documentation
+                <a href="?docs=true" class="btn" style="text-decoration:none;">
+                    <i data-lucide="book-open" class="w-4 h-4"></i> Documentation
                 </a>
-            </p>
+            </div>
         </div>
     </div>
 </div>

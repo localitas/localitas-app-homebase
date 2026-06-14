@@ -246,7 +246,18 @@
             });
         })();
 
-        document.addEventListener('DOMContentLoaded', function() { lucide.createIcons(); });
+        document.addEventListener('DOMContentLoaded', function() {
+            lucide.createIcons();
+            if (new URLSearchParams(window.location.search).get('docs') === 'true') {
+                var main = document.getElementById('main-widget-container');
+                if (main) {
+                    main.innerHTML = '<div style="padding:1rem;color:var(--color-text-secondary);">Loading documentation...</div>';
+                    fetch('/apps/homebase/help?format=html',{headers:typeof getGlobalAuthHeaders==='function'?getGlobalAuthHeaders():{}})
+                    .then(function(r) { return r.text(); })
+                    .then(function(h) { main.innerHTML = h; lucide.createIcons(); });
+                }
+            }
+        });
 
         var sidebar = document.getElementById('homebase-sidebar');
         var resizeHandle = document.getElementById('resize-handle');
