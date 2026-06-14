@@ -109,26 +109,6 @@ Plugins are standalone apps that broadcast via mDNS with `plugin_type=homebase-p
 3. Homebase calls `POST /api/configure` on the plugin with the vault public ID
 4. Plugin fetches secrets from Vault and initializes
 
-## API Endpoints
+## API Reference
 
-### Devices
-- `GET /api/devices` — list all devices (read)
-- `GET /api/devices/{id}` — device details (read)
-- `GET /api/devices/{id}/state` — live device state (read)
-- `GET /api/devices/{id}/snapshot` — camera snapshot, JPEG (read)
-- `POST /api/devices` — commission Matter device (write)
-- `PUT /api/devices/{id}` — update name/room (write)
-- `DELETE /api/devices/{id}` — remove device (write)
-- `POST /api/devices/{id}/command` — send command (write)
-- `POST /api/virtual-devices` — create virtual device (write)
-
-### Plugins
-- `GET /api/plugins` — list discovered plugins (read)
-- `GET /api/plugins/{name}/credential` — get plugin credential (admin)
-- `PUT /api/plugins/{name}/credential` — set plugin credential (admin)
-- `DELETE /api/plugins/{name}/credential` — remove plugin credential (admin)
-
-### Other
-- `GET /api/rooms` — list all rooms (read)
-- `GET /api/clusters` — list supported Matter clusters (read)
-- `GET /api/sidecar/health` — Matter sidecar health (read)
+Full API documentation is available at `/swagger.json`.
