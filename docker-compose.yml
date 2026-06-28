@@ -1,6 +1,7 @@
 services:
   web:
     image: ghcr.io/localitas/localitas-app-homebase:latest
+    command: ["serve", "--listen", ":8000", "--base-path", "/apps/ext/homebase/"]
     ports:
       - "${APP_PORT:-9221}:8000"
     environment:
