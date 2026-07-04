@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+
+	"github.com/localitas/localitas-go/httputil"
 )
 
 type handler struct {
@@ -21,32 +23,32 @@ func (h *handler) handleListDevices(w http.ResponseWriter, r *http.Request) {
 		devices, err = h.app.Store.ListDevices(r.Context())
 	}
 	if err != nil {
-		writeErr(w, http.StatusInternalServerError, "failed to list devices: %v", err)
+		writeErr(w, r, http.StatusInternalServerError, "failed to list devices: %v", err)
 		return
 	}
-	writeJSON(w, http.StatusOK, devices)
+	writeJSON(w, r, http.StatusOK, devices)
 }
 
 func (h *handler) handleGetDevice(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	dev, err := h.app.Store.GetDevice(r.Context(), id)
 	if err != nil {
-		writeErr(w, http.StatusNotFound, "device not found: %v", err)
+		writeErr(w, r, http.StatusNotFound, "device not found: %v", err)
 		return
 	}
-	writeJSON(w, http.StatusOK, dev)
+	writeJSON(w, r, http.StatusOK, dev)
 }
 
 func (h *handler) handleGetDeviceState(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	dev, err := h.app.Store.GetDevice(r.Context(), id)
 	if err != nil {
-		writeErr(w, http.StatusNotFound, "device not found: %v", err)
+		writeErr(w, r, http.StatusNotFound, "device not found: %v", err)
 		return
 	}
 
 	if dev.Virtual {
-		writeJSON(w, http.StatusOK, DeviceState{
+		writeJSON(w, r, http.StatusOK, DeviceState{
 			NodeID: dev.NodeID,
 			Online: true,
 		})
@@ -54,7 +56,7 @@ func (h *handler) handleGetDeviceState(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if dev.Source != "" {
-		writeJSON(w, http.StatusOK, DeviceState{
+		writeJSON(w, r, http.StatusOK, DeviceState{
 			NodeID: dev.NodeID,
 			Online: dev.Online,
 		})
@@ -63,30 +65,30 @@ func (h *handler) handleGetDeviceState(w http.ResponseWriter, r *http.Request) {
 
 	state, err := h.app.Sidecar.GetDeviceState(dev.NodeID)
 	if err != nil {
-		writeErr(w, http.StatusBadGateway, "sidecar error: %v", err)
+		writeErr(w, r, http.StatusBadGateway, "sidecar error: %v", err)
 		return
 	}
-	writeJSON(w, http.StatusOK, state)
+	writeJSON(w, r, http.StatusOK, state)
 }
 
 func (h *handler) handleCommission(w http.ResponseWriter, r *http.Request) {
 	var req CommissionRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeErr(w, http.StatusBadRequest, "invalid request body: %v", err)
+		writeErr(w, r, http.StatusBadRequest, "invalid request body: %v", err)
 		return
 	}
 	if req.SetupCode == "" {
-		writeErr(w, http.StatusBadRequest, "setup_code is required")
+		writeErr(w, r, http.StatusBadRequest, "setup_code is required")
 		return
 	}
 	if req.Name == "" {
-		writeErr(w, http.StatusBadRequest, "name is required")
+		writeErr(w, r, http.StatusBadRequest, "name is required")
 		return
 	}
 
 	result, err := h.app.Sidecar.Commission(req.SetupCode)
 	if err != nil {
-		writeErr(w, http.StatusBadGateway, "commissioning failed: %v", err)
+		writeErr(w, r, http.StatusBadGateway, "commissioning failed: %v", err)
 		return
 	}
 
@@ -104,7 +106,7 @@ func (h *handler) handleCommission(w http.ResponseWriter, r *http.Request) {
 		false,
 	)
 	if err != nil {
-		writeErr(w, http.StatusInternalServerError, "failed to save device: %v", err)
+		writeErr(w, r, http.StatusInternalServerError, "failed to save device: %v", err)
 		return
 	}
 
@@ -114,20 +116,20 @@ func (h *handler) handleCommission(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	writeJSON(w, http.StatusOK, dev)
+	writeJSON(w, r, http.StatusOK, dev)
 }
 
 func (h *handler) handleDecommission(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	dev, err := h.app.Store.GetDevice(r.Context(), id)
 	if err != nil {
-		writeErr(w, http.StatusNotFound, "device not found: %v", err)
+		writeErr(w, r, http.StatusNotFound, "device not found: %v", err)
 		return
 	}
 
 	if !dev.Virtual {
 		if err := h.app.Sidecar.Decommission(dev.NodeID); err != nil {
-			writeErr(w, http.StatusBadGateway, "decommission failed: %v", err)
+			writeErr(w, r, http.StatusBadGateway, "decommission failed: %v", err)
 			return
 		}
 	}
@@ -137,39 +139,39 @@ func (h *handler) handleDecommission(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.app.Store.DeleteDevice(r.Context(), id); err != nil {
-		writeErr(w, http.StatusInternalServerError, "failed to delete device: %v", err)
+		writeErr(w, r, http.StatusInternalServerError, "failed to delete device: %v", err)
 		return
 	}
 
-	writeJSON(w, http.StatusOK, map[string]bool{"success": true})
+	writeJSON(w, r, http.StatusOK, map[string]bool{"success": true})
 }
 
 func (h *handler) handleUpdateDevice(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	var update DeviceUpdate
 	if err := json.NewDecoder(r.Body).Decode(&update); err != nil {
-		writeErr(w, http.StatusBadRequest, "invalid request body: %v", err)
+		writeErr(w, r, http.StatusBadRequest, "invalid request body: %v", err)
 		return
 	}
 
 	if err := h.app.Store.UpdateDevice(r.Context(), id, update); err != nil {
-		writeErr(w, http.StatusInternalServerError, "failed to update device: %v", err)
+		writeErr(w, r, http.StatusInternalServerError, "failed to update device: %v", err)
 		return
 	}
 
 	dev, err := h.app.Store.GetDevice(r.Context(), id)
 	if err != nil {
-		writeErr(w, http.StatusNotFound, "device not found: %v", err)
+		writeErr(w, r, http.StatusNotFound, "device not found: %v", err)
 		return
 	}
-	writeJSON(w, http.StatusOK, dev)
+	writeJSON(w, r, http.StatusOK, dev)
 }
 
 func (h *handler) handleCommand(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	dev, err := h.app.Store.GetDevice(r.Context(), id)
 	if err != nil {
-		writeErr(w, http.StatusNotFound, "device not found: %v", err)
+		writeErr(w, r, http.StatusNotFound, "device not found: %v", err)
 		return
 	}
 
@@ -180,18 +182,18 @@ func (h *handler) handleCommand(w http.ResponseWriter, r *http.Request) {
 
 	var cmd CommandRequest
 	if err := json.NewDecoder(r.Body).Decode(&cmd); err != nil {
-		writeErr(w, http.StatusBadRequest, "invalid request body: %v", err)
+		writeErr(w, r, http.StatusBadRequest, "invalid request body: %v", err)
 		return
 	}
 
 	if cmd.Cluster == "" || cmd.Command == "" {
-		writeErr(w, http.StatusBadRequest, "cluster and command are required")
+		writeErr(w, r, http.StatusBadRequest, "cluster and command are required")
 		return
 	}
 
 	clusterDef, ok := ClusterDefFor(cmd.Cluster)
 	if !ok {
-		writeErr(w, http.StatusBadRequest, "unsupported cluster: %s", cmd.Cluster)
+		writeErr(w, r, http.StatusBadRequest, "unsupported cluster: %s", cmd.Cluster)
 		return
 	}
 
@@ -203,22 +205,22 @@ func (h *handler) handleCommand(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if !validCmd {
-		writeErr(w, http.StatusBadRequest, "unsupported command %s for cluster %s", cmd.Command, cmd.Cluster)
+		writeErr(w, r, http.StatusBadRequest, "unsupported command %s for cluster %s", cmd.Command, cmd.Cluster)
 		return
 	}
 
 	if dev.Virtual {
-		writeJSON(w, http.StatusOK, CommandResponse{Success: true})
+		writeJSON(w, r, http.StatusOK, CommandResponse{Success: true})
 		return
 	}
 
 	result, err := h.app.Sidecar.SendCommand(dev.NodeID, cmd.Cluster, cmd.Command, cmd.Arguments)
 	if err != nil {
-		writeErr(w, http.StatusBadGateway, "command failed: %v", err)
+		writeErr(w, r, http.StatusBadGateway, "command failed: %v", err)
 		return
 	}
 
-	writeJSON(w, http.StatusOK, CommandResponse{
+	writeJSON(w, r, http.StatusOK, CommandResponse{
 		Success: result.Success,
 		Error:   result.Error,
 	})
@@ -227,11 +229,11 @@ func (h *handler) handleCommand(w http.ResponseWriter, r *http.Request) {
 func (h *handler) handleCreateVirtual(w http.ResponseWriter, r *http.Request) {
 	var req CreateVirtualRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeErr(w, http.StatusBadRequest, "invalid request body: %v", err)
+		writeErr(w, r, http.StatusBadRequest, "invalid request body: %v", err)
 		return
 	}
 	if req.Name == "" {
-		writeErr(w, http.StatusBadRequest, "name is required")
+		writeErr(w, r, http.StatusBadRequest, "name is required")
 		return
 	}
 
@@ -244,7 +246,7 @@ func (h *handler) handleCreateVirtual(w http.ResponseWriter, r *http.Request) {
 
 	nodeID, err := h.app.Store.NextVirtualNodeID(r.Context())
 	if err != nil {
-		writeErr(w, http.StatusInternalServerError, "failed to allocate node ID: %v", err)
+		writeErr(w, r, http.StatusInternalServerError, "failed to allocate node ID: %v", err)
 		return
 	}
 
@@ -260,7 +262,7 @@ func (h *handler) handleCreateVirtual(w http.ResponseWriter, r *http.Request) {
 		true,
 	)
 	if err != nil {
-		writeErr(w, http.StatusInternalServerError, "failed to save device: %v", err)
+		writeErr(w, r, http.StatusInternalServerError, "failed to save device: %v", err)
 		return
 	}
 
@@ -270,7 +272,7 @@ func (h *handler) handleCreateVirtual(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	writeJSON(w, http.StatusOK, dev)
+	writeJSON(w, r, http.StatusOK, dev)
 }
 
 func clustersForDeviceType(dt string) []string {
@@ -292,19 +294,19 @@ func clustersForDeviceType(dt string) []string {
 
 func (h *handler) proxyPluginCommand(w http.ResponseWriter, r *http.Request, dev *Device) {
 	if h.app.Plugins == nil {
-		writeErr(w, http.StatusBadGateway, "plugin discovery not available")
+		writeErr(w, r, http.StatusBadGateway, "plugin discovery not available")
 		return
 	}
 
 	plugin := h.app.Plugins.GetPlugin(dev.Source)
 	if plugin == nil {
-		writeErr(w, http.StatusBadGateway, "plugin %s not found", dev.Source)
+		writeErr(w, r, http.StatusBadGateway, "plugin %s not found", dev.Source)
 		return
 	}
 
 	data, status, err := plugin.Client.ProxyCommand(dev.SourceID, r.Body)
 	if err != nil {
-		writeErr(w, http.StatusBadGateway, "plugin command failed: %v", err)
+		writeErr(w, r, http.StatusBadGateway, "plugin command failed: %v", err)
 		return
 	}
 
@@ -317,29 +319,29 @@ func (h *handler) handleGetSnapshot(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	dev, err := h.app.Store.GetDevice(r.Context(), id)
 	if err != nil {
-		writeErr(w, http.StatusNotFound, "device not found: %v", err)
+		writeErr(w, r, http.StatusNotFound, "device not found: %v", err)
 		return
 	}
 
 	if dev.Source == "" {
-		writeErr(w, http.StatusBadRequest, "snapshots only available for plugin devices")
+		writeErr(w, r, http.StatusBadRequest, "snapshots only available for plugin devices")
 		return
 	}
 
 	if h.app.Plugins == nil {
-		writeErr(w, http.StatusBadGateway, "plugin discovery not available")
+		writeErr(w, r, http.StatusBadGateway, "plugin discovery not available")
 		return
 	}
 
 	plugin := h.app.Plugins.GetPlugin(dev.Source)
 	if plugin == nil {
-		writeErr(w, http.StatusBadGateway, "plugin %s not found", dev.Source)
+		writeErr(w, r, http.StatusBadGateway, "plugin %s not found", dev.Source)
 		return
 	}
 
 	data, err := plugin.Client.GetSnapshot(dev.SourceID)
 	if err != nil {
-		writeErr(w, http.StatusBadGateway, "snapshot failed: %v", err)
+		writeErr(w, r, http.StatusBadGateway, "snapshot failed: %v", err)
 		return
 	}
 
@@ -349,20 +351,20 @@ func (h *handler) handleGetSnapshot(w http.ResponseWriter, r *http.Request) {
 
 func (h *handler) handleListPlugins(w http.ResponseWriter, r *http.Request) {
 	if h.app.Plugins == nil {
-		writeJSON(w, http.StatusOK, []DiscoveredPlugin{})
+		writeJSON(w, r, http.StatusOK, []DiscoveredPlugin{})
 		return
 	}
-	writeJSON(w, http.StatusOK, h.app.Plugins.ListPlugins())
+	writeJSON(w, r, http.StatusOK, h.app.Plugins.ListPlugins())
 }
 
 func (h *handler) handleGetPluginCredential(w http.ResponseWriter, r *http.Request) {
 	name := r.PathValue("name")
 	cred, err := h.app.Store.GetPluginCredential(r.Context(), name)
 	if err != nil {
-		writeErr(w, http.StatusNotFound, "no credential configured for plugin %s", name)
+		writeErr(w, r, http.StatusNotFound, "no credential configured for plugin %s", name)
 		return
 	}
-	writeJSON(w, http.StatusOK, cred)
+	writeJSON(w, r, http.StatusOK, cred)
 }
 
 func (h *handler) handleSetPluginCredential(w http.ResponseWriter, r *http.Request) {
@@ -371,16 +373,16 @@ func (h *handler) handleSetPluginCredential(w http.ResponseWriter, r *http.Reque
 		VaultPublicID string `json:"vault_public_id"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeErr(w, http.StatusBadRequest, "invalid request body: %v", err)
+		writeErr(w, r, http.StatusBadRequest, "invalid request body: %v", err)
 		return
 	}
 	if req.VaultPublicID == "" {
-		writeErr(w, http.StatusBadRequest, "vault_public_id is required")
+		writeErr(w, r, http.StatusBadRequest, "vault_public_id is required")
 		return
 	}
 
 	if err := h.app.Store.SetPluginCredential(r.Context(), name, req.VaultPublicID); err != nil {
-		writeErr(w, http.StatusInternalServerError, "failed to save credential: %v", err)
+		writeErr(w, r, http.StatusInternalServerError, "failed to save credential: %v", err)
 		return
 	}
 
@@ -391,29 +393,29 @@ func (h *handler) handleSetPluginCredential(w http.ResponseWriter, r *http.Reque
 		}
 	}
 
-	writeJSON(w, http.StatusOK, map[string]string{"status": "ok", "plugin_name": name, "vault_public_id": req.VaultPublicID})
+	writeJSON(w, r, http.StatusOK, map[string]string{"status": "ok", "plugin_name": name, "vault_public_id": req.VaultPublicID})
 }
 
 func (h *handler) handleDeletePluginCredential(w http.ResponseWriter, r *http.Request) {
 	name := r.PathValue("name")
 	if err := h.app.Store.DeletePluginCredential(r.Context(), name); err != nil {
-		writeErr(w, http.StatusInternalServerError, "failed to delete credential: %v", err)
+		writeErr(w, r, http.StatusInternalServerError, "failed to delete credential: %v", err)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]bool{"success": true})
+	writeJSON(w, r, http.StatusOK, map[string]bool{"success": true})
 }
 
 func (h *handler) handleListRooms(w http.ResponseWriter, r *http.Request) {
 	rooms, err := h.app.Store.ListRooms(r.Context())
 	if err != nil {
-		writeErr(w, http.StatusInternalServerError, "failed to list rooms: %v", err)
+		writeErr(w, r, http.StatusInternalServerError, "failed to list rooms: %v", err)
 		return
 	}
-	writeJSON(w, http.StatusOK, rooms)
+	writeJSON(w, r, http.StatusOK, rooms)
 }
 
 func (h *handler) handleListClusters(w http.ResponseWriter, r *http.Request) {
-	writeJSON(w, http.StatusOK, SupportedClusters)
+	writeJSON(w, r, http.StatusOK, SupportedClusters)
 }
 
 func (h *handler) handleSidecarHealth(w http.ResponseWriter, r *http.Request) {
@@ -422,18 +424,13 @@ func (h *handler) handleSidecarHealth(w http.ResponseWriter, r *http.Request) {
 		"sidecar_healthy": healthy,
 		"sidecar_url":     h.app.SidecarURL,
 	}
-	writeJSON(w, http.StatusOK, status)
+	writeJSON(w, r, http.StatusOK, status)
 }
 
-func writeJSON(w http.ResponseWriter, status int, v interface{}) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(v)
+func writeJSON(w http.ResponseWriter, r *http.Request, status int, v interface{}) {
+	httputil.WriteResponse(w, r, status, v)
 }
 
-func writeErr(w http.ResponseWriter, status int, format string, args ...interface{}) {
-	msg := fmt.Sprintf(format, args...)
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(map[string]string{"error": msg})
+func writeErr(w http.ResponseWriter, r *http.Request, status int, format string, args ...interface{}) {
+	httputil.WriteError(w, r, status, format, args...)
 }

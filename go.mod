@@ -9,6 +9,8 @@ require (
 	github.com/urfave/cli/v3 v3.9.1
 )
 
+replace github.com/localitas/localitas-go => /Users/didipkerabat/localitas-go
+
 require (
 	github.com/brutella/dnssd v1.2.14 // indirect
 	github.com/cenkalti/backoff v2.2.1+incompatible // indirect
@@ -27,4 +29,5 @@ require (
 	golang.org/x/text v0.16.0 // indirect
 	golang.org/x/tools v0.22.0 // indirect
 	gopkg.in/Regis24GmbH/go-diacritics.v2 v2.0.3 // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
