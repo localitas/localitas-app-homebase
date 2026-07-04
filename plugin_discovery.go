@@ -3,7 +3,6 @@ package homebase
 import (
 	"context"
 	"fmt"
-	"log"
 	"strconv"
 	"sync"
 	"time"
@@ -39,7 +38,7 @@ func NewPluginDiscovery(store *Store, hap *HAPBridge) *PluginDiscovery {
 }
 
 func (pd *PluginDiscovery) Start(ctx context.Context) {
-	log.Printf("Starting homebase plugin discovery")
+	logger.Info("starting plugin discovery")
 	go pd.scanLoop(ctx)
 	go pd.syncLoop(ctx)
 }
@@ -79,7 +78,7 @@ func (pd *PluginDiscovery) scanLoop(ctx context.Context) {
 func (pd *PluginDiscovery) scan(ctx context.Context) {
 	resolver, err := zeroconf.NewResolver(nil)
 	if err != nil {
-		log.Printf("plugin discovery resolver error: %v", err)
+		logger.Error("plugin discovery resolver error", "error", err)
 		return
 	}
 
@@ -90,7 +89,7 @@ func (pd *PluginDiscovery) scan(ctx context.Context) {
 	go func() {
 		if err := resolver.Browse(scanCtx, AppServiceType, AppServiceDomain, entries); err != nil {
 			if err != context.DeadlineExceeded && err != context.Canceled {
-				log.Printf("plugin discovery browse error: %v", err)
+				logger.Error("plugin discovery browse error", "error", err)
 			}
 		}
 	}()
@@ -141,7 +140,7 @@ func (pd *PluginDiscovery) handleEntry(entry *zeroconf.ServiceEntry) {
 	pc := NewPluginClient(baseURL, name)
 	health, err := pc.FetchHealth()
 	if err != nil {
-		log.Printf("plugin %s at %s unreachable: %v", name, baseURL, err)
+		logger.Warn("plugin unreachable", "plugin", name, "url", baseURL, "error", err)
 		return
 	}
 
@@ -160,7 +159,7 @@ func (pd *PluginDiscovery) handleEntry(entry *zeroconf.ServiceEntry) {
 	pd.plugins[name] = plugin
 	pd.mu.Unlock()
 
-	log.Printf("Discovered homebase plugin: %s (%s) at %s", health.DisplayName, name, baseURL)
+	logger.Info("discovered plugin", "display_name", health.DisplayName, "plugin", name, "url", baseURL)
 
 	pd.ConfigurePlugin(context.Background(), plugin)
 	go pd.syncPlugin(context.Background(), plugin)
@@ -173,10 +172,10 @@ func (pd *PluginDiscovery) ConfigurePlugin(ctx context.Context, plugin *Discover
 	}
 	err = plugin.Client.Configure(cred.VaultPublicID)
 	if err != nil {
-		log.Printf("plugin %s configure failed: %v", plugin.Name, err)
+		logger.Error("plugin configure failed", "plugin", plugin.Name, "error", err)
 		return
 	}
-	log.Printf("plugin %s configured with vault credential %s", plugin.Name, cred.VaultPublicID)
+	logger.Info("plugin configured with vault credential", "plugin", plugin.Name, "vault_public_id", cred.VaultPublicID)
 }
 
 func (pd *PluginDiscovery) syncLoop(ctx context.Context) {
@@ -203,7 +202,7 @@ func (pd *PluginDiscovery) syncAll(ctx context.Context) {
 
 	for _, p := range plugins {
 		if !p.Client.Healthy() {
-			log.Printf("plugin %s unhealthy, marking devices offline", p.Name)
+			logger.Warn("plugin unhealthy, marking devices offline", "plugin", p.Name)
 			pd.store.MarkOfflineBySource(ctx, p.Name)
 			continue
 		}
@@ -214,7 +213,7 @@ func (pd *PluginDiscovery) syncAll(ctx context.Context) {
 func (pd *PluginDiscovery) syncPlugin(ctx context.Context, plugin *DiscoveredPlugin) {
 	devices, err := plugin.Client.FetchDevices()
 	if err != nil {
-		log.Printf("plugin %s device fetch failed: %v", plugin.Name, err)
+		logger.Error("plugin device fetch failed", "plugin", plugin.Name, "error", err)
 		return
 	}
 
@@ -238,7 +237,7 @@ func (pd *PluginDiscovery) syncPlugin(ctx context.Context, plugin *DiscoveredPlu
 			pd_dev.IsOnline,
 		)
 		if err != nil {
-			log.Printf("plugin %s upsert device %s failed: %v", plugin.Name, pd_dev.Name, err)
+			logger.Error("plugin upsert device failed", "plugin", plugin.Name, "device", pd_dev.Name, "error", err)
 			continue
 		}
 
@@ -257,11 +256,11 @@ func (pd *PluginDiscovery) syncPlugin(ctx context.Context, plugin *DiscoveredPlu
 				pd.hap.RemoveDevice(d.ID)
 			}
 			pd.store.DeleteDevice(ctx, d.ID)
-			log.Printf("plugin %s: removed stale device %s (%s)", plugin.Name, d.Name, d.ID)
+			logger.Info("removed stale device", "plugin", plugin.Name, "device", d.Name, "device_id", d.ID)
 		}
 	}
 
-	log.Printf("plugin %s: synced %d devices", plugin.Name, len(devices))
+	logger.Info("synced plugin devices", "plugin", plugin.Name, "count", len(devices))
 }
 
 func parseTXTRecords(records []string) map[string]string {

@@ -3,7 +3,6 @@ package homebase
 import (
 	"context"
 	"fmt"
-	"log"
 	"sync"
 	"time"
 
@@ -84,7 +83,7 @@ func (h *HAPBridge) Start(ctx context.Context) error {
 
 	go func() {
 		if err := server.ListenAndServe(ctx); err != nil {
-			log.Printf("HAP server error: %v", err)
+			logger.Error("HAP server error", "error", err)
 		}
 	}()
 
@@ -422,10 +421,10 @@ func (h *HAPBridge) buildOccupancySensor(info accessory.Info, hd *hapDevice) {
 func (h *HAPBridge) sendCommand(nodeID uint64, cluster, command string, args map[string]interface{}) {
 	result, err := h.sidecar.SendCommand(nodeID, cluster, command, args)
 	if err != nil {
-		log.Printf("HAP command error (node %d, %s/%s): %v", nodeID, cluster, command, err)
+		logger.Error("HAP command error", "node_id", nodeID, "cluster", cluster, "command", command, "error", err)
 		return
 	}
 	if !result.Success {
-		log.Printf("HAP command failed (node %d, %s/%s): %s", nodeID, cluster, command, result.Error)
+		logger.Warn("HAP command failed", "node_id", nodeID, "cluster", cluster, "command", command, "error", result.Error)
 	}
 }

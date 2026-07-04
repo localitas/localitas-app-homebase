@@ -3,7 +3,6 @@ package homebase
 import (
 	"fmt"
 	"html/template"
-	"log"
 	"net/http"
 )
 
@@ -75,7 +74,7 @@ func (p *partialHandler) handleDeleteDevice(w http.ResponseWriter, r *http.Reque
 
 	if !dev.Virtual {
 		if err := p.app.Sidecar.Decommission(dev.NodeID); err != nil {
-			log.Printf("decommission warning for %s: %v", id, err)
+			logger.Warn("decommission warning", "device_id", id, "error", err)
 		}
 	}
 
@@ -131,7 +130,7 @@ func (p *partialHandler) handleCommission(w http.ResponseWriter, r *http.Request
 
 	if p.app.HAP != nil {
 		if err := p.app.HAP.AddDevice(dev); err != nil {
-			log.Printf("HAP add device warning: %v", err)
+			logger.Warn("HAP add device failed", "error", err)
 		}
 	}
 
@@ -178,7 +177,7 @@ func (p *partialHandler) handleCreateVirtual(w http.ResponseWriter, r *http.Requ
 
 	if p.app.HAP != nil {
 		if err := p.app.HAP.AddDevice(dev); err != nil {
-			log.Printf("HAP add virtual device warning: %v", err)
+			logger.Warn("HAP add virtual device failed", "error", err)
 		}
 	}
 
@@ -244,42 +243,42 @@ func (p *partialHandler) handleSidecarStatus(w http.ResponseWriter, r *http.Requ
 func renderPartial(w http.ResponseWriter, file, name string, data interface{}) {
 	content, err := TemplatesFS.ReadFile(file)
 	if err != nil {
-		log.Printf("partial read error (%s): %v", file, err)
+		logger.Error("partial read error", "file", file, "error", err)
 		http.Error(w, "template error", http.StatusInternalServerError)
 		return
 	}
 
 	tmpl, err := template.New(name).Parse(string(content))
 	if err != nil {
-		log.Printf("partial parse error (%s): %v", file, err)
+		logger.Error("partial parse error", "file", file, "error", err)
 		http.Error(w, "template error", http.StatusInternalServerError)
 		return
 	}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	if err := tmpl.ExecuteTemplate(w, name, data); err != nil {
-		log.Printf("partial render error (%s): %v", file, err)
+		logger.Error("partial render error", "file", file, "error", err)
 	}
 }
 
 func renderPartialWithOOB(w http.ResponseWriter, file, name string, data interface{}, p *partialHandler, r *http.Request) {
 	content, err := TemplatesFS.ReadFile(file)
 	if err != nil {
-		log.Printf("partial read error (%s): %v", file, err)
+		logger.Error("partial read error", "file", file, "error", err)
 		http.Error(w, "template error", http.StatusInternalServerError)
 		return
 	}
 
 	tmpl, err := template.New(name).Parse(string(content))
 	if err != nil {
-		log.Printf("partial parse error (%s): %v", file, err)
+		logger.Error("partial parse error", "file", file, "error", err)
 		http.Error(w, "template error", http.StatusInternalServerError)
 		return
 	}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	if err := tmpl.ExecuteTemplate(w, name, data); err != nil {
-		log.Printf("partial render error (%s): %v", file, err)
+		logger.Error("partial render error", "file", file, "error", err)
 	}
 
 	devices, err := p.app.Store.ListDevices(r.Context())

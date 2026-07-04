@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"log/slog"
 	"net"
 	"net/http"
 	"os"
@@ -91,7 +92,7 @@ func serveAction(ctx context.Context, cmd *cli.Command) error {
 	if err != nil {
 		return fmt.Errorf("install: %w", err)
 	}
-	log.Printf("Homebase database ready: %s", dbID)
+	slog.Info("database ready", "db_id", dbID)
 
 	if err := a.InitStore(coreURL, dbID, token); err != nil {
 		return fmt.Errorf("init store: %w", err)
@@ -104,15 +105,15 @@ func serveAction(ctx context.Context, cmd *cli.Command) error {
 	hapCtx, hapCancel := context.WithCancel(ctx)
 	defer hapCancel()
 	if err := hapBridge.Start(hapCtx); err != nil {
-		log.Printf("HAP bridge failed to start: %v", err)
+		slog.Error("HAP bridge failed to start", "error", err)
 	} else {
-		log.Printf("HAP bridge started (PIN: %s)", hapPin)
+		slog.Info("HAP bridge started", "pin", hapPin)
 	}
 
 	pluginDiscovery := homebase.NewPluginDiscovery(a.Store, hapBridge)
 	a.Plugins = pluginDiscovery
 	pluginDiscovery.Start(hapCtx)
-	log.Printf("Plugin discovery started")
+	slog.Info("plugin discovery started")
 
 	mux := http.NewServeMux()
 	a.RegisterRoutes(mux)
@@ -127,19 +128,19 @@ func serveAction(ctx context.Context, cmd *cli.Command) error {
 
 	selfURL := fmt.Sprintf("http://localhost:%d", addr.Port)
 	if err := c.RegisterService(ctx, "homebase", selfURL); err != nil {
-		log.Printf("service registry failed: %v", err)
+		slog.Warn("service registry failed", "error", err)
 	}
 
 	shutdown, err := homebase.BroadcastMDNS(addr.Port, homebase.DefaultHealth.Name)
 	if err != nil {
-		log.Printf("mDNS broadcast failed: %v", err)
+		slog.Warn("mDNS broadcast failed", "error", err)
 	}
 
 	go func() {
 		sig := make(chan os.Signal, 1)
 		signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
 		<-sig
-		log.Println("shutting down...")
+		slog.Info("shutting down")
 		hapCancel()
 		if shutdown != nil {
 			shutdown()
@@ -162,7 +163,7 @@ func migrateCommand() *cli.Command {
 			if err != nil {
 				return fmt.Errorf("migrate: %w", err)
 			}
-			log.Printf("Homebase migrations complete (database: %s)", dbID)
+			slog.Info("migrations complete", "db_id", dbID)
 			return nil
 		},
 	}
