@@ -1,6 +1,6 @@
 module github.com/localitas/localitas-app-homebase
 
-go 1.26.3
+go 1.26.5
 
 require (
 	github.com/brutella/hap v0.0.35
