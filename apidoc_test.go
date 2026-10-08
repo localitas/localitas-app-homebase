@@ -21,12 +21,15 @@ func TestHandleSwagger_ReturnsValidJSON(t *testing.T) {
 		t.Errorf("expected application/json, got %q", ct)
 	}
 
-	var spec map[string]interface{}
+	var spec APIDoc
 	if err := json.Unmarshal(w.Body.Bytes(), &spec); err != nil {
 		t.Fatalf("invalid JSON: %v", err)
 	}
-	if spec["openapi"] != "3.0.3" {
-		t.Errorf("expected openapi 3.0.3, got %v", spec["openapi"])
+	if spec.AppName != "Homebase" {
+		t.Errorf("expected app_name Homebase, got %q", spec.AppName)
+	}
+	if len(spec.Endpoints) == 0 {
+		t.Error("expected endpoints")
 	}
 }
 
