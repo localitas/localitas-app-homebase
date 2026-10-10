@@ -127,40 +127,8 @@ var HomebaseAPIDoc = APIDoc{
 }
 
 func HandleSwagger(w http.ResponseWriter, r *http.Request) {
-	spec := generateSwaggerSpec(HomebaseAPIDoc)
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(spec)
-}
-
-func generateSwaggerSpec(doc APIDoc) map[string]interface{} {
-	paths := make(map[string]interface{})
-	for _, ep := range doc.Endpoints {
-		methodKey := strings.ToLower(ep.Method)
-		opID := methodKey + "_" + strings.NewReplacer("/", "_", "{", "", "}", "").Replace(ep.Path)
-		operation := map[string]interface{}{
-			"summary":     ep.Summary,
-			"operationId": opID,
-			"responses":   map[string]interface{}{"200": map[string]interface{}{"description": "Success"}},
-		}
-		if len(ep.QueryParams) > 0 {
-			params := make([]map[string]interface{}, 0)
-			for _, p := range ep.QueryParams {
-				params = append(params, map[string]interface{}{"name": p.Name, "in": "query", "required": p.Required, "description": p.Description, "schema": map[string]string{"type": p.Type}})
-			}
-			operation["parameters"] = params
-		}
-		if ep.RequestBody != nil {
-			operation["requestBody"] = map[string]interface{}{"content": map[string]interface{}{ep.RequestBody.ContentType: map[string]interface{}{"example": json.RawMessage(ep.RequestBody.Example)}}}
-		}
-		if ep.Response != nil {
-			operation["responses"].(map[string]interface{})["200"] = map[string]interface{}{"description": "Success", "content": map[string]interface{}{ep.Response.ContentType: map[string]interface{}{"example": json.RawMessage(ep.Response.Example)}}}
-		}
-		if _, exists := paths[ep.Path]; !exists {
-			paths[ep.Path] = make(map[string]interface{})
-		}
-		paths[ep.Path].(map[string]interface{})[methodKey] = operation
-	}
-	return map[string]interface{}{"openapi": "3.0.3", "info": map[string]interface{}{"title": doc.AppName, "version": doc.Version, "description": doc.Description}, "paths": paths}
+	json.NewEncoder(w).Encode(HomebaseAPIDoc)
 }
 
 func RenderDocsHTML(doc APIDoc) template.HTML {
