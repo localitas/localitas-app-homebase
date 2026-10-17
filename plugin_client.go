@@ -4,8 +4,10 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	client "github.com/localitas/localitas-go"
 	"io"
 	"net/http"
+	"os"
 	"time"
 )
 
@@ -43,7 +45,7 @@ func NewPluginClient(baseURL, name string) *PluginClient {
 	return &PluginClient{
 		baseURL:    baseURL,
 		name:       name,
-		httpClient: &http.Client{Timeout: 15 * time.Second},
+		httpClient: &http.Client{Timeout: 15 * time.Second, Transport: systemTokenTransport{}},
 	}
 }
 
@@ -136,4 +138,18 @@ func (pc *PluginClient) Healthy() bool {
 	}
 	defer resp.Body.Close()
 	return resp.StatusCode == http.StatusOK
+}
+
+// systemTokenTransport sends the API token core gave this app on every call
+// to a plugin: plugins admit homebase as core itself.
+type systemTokenTransport struct{}
+
+func (systemTokenTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	token := os.Getenv("LOCALITAS_API_TOKEN")
+	if token == "" {
+		token = client.DefaultToken()
+	}
+	req = req.Clone(req.Context())
+	req.Header.Set("Authorization", "Bearer "+token)
+	return http.DefaultTransport.RoundTrip(req)
 }
