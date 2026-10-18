@@ -30,23 +30,21 @@ type hapDevice struct {
 }
 
 type HAPBridge struct {
-	mu         sync.RWMutex
-	server     *hap.Server
-	bridge     *accessory.Bridge
-	devices    map[string]*hapDevice
-	sidecar    *SidecarClient
-	store      *Store
-	pin        string
-	storageDir string
+	mu      sync.RWMutex
+	server  *hap.Server
+	bridge  *accessory.Bridge
+	devices map[string]*hapDevice
+	sidecar *SidecarClient
+	store   *Store
+	pin     string
 }
 
-func NewHAPBridge(sidecar *SidecarClient, store *Store, pin, storageDir string) *HAPBridge {
+func NewHAPBridge(sidecar *SidecarClient, store *Store, pin string) *HAPBridge {
 	return &HAPBridge{
-		devices:    make(map[string]*hapDevice),
-		sidecar:    sidecar,
-		store:      store,
-		pin:        pin,
-		storageDir: storageDir,
+		devices: make(map[string]*hapDevice),
+		sidecar: sidecar,
+		store:   store,
+		pin:     pin,
 	}
 }
 
@@ -74,7 +72,7 @@ func (h *HAPBridge) Start(ctx context.Context) error {
 		}
 	}
 
-	server, err := hap.NewServer(hap.NewFsStore(h.storageDir), h.bridge.A, accs...)
+	server, err := hap.NewServer(&hapStore{db: h.store.db}, h.bridge.A, accs...)
 	if err != nil {
 		return fmt.Errorf("create HAP server: %w", err)
 	}

@@ -56,7 +56,6 @@ func commonFlags() []cli.Flag {
 		&cli.StringFlag{Name: "token", Value: envOrFileToken(), Usage: "bearer token for API calls"},
 		&cli.StringFlag{Name: "sidecar-url", Value: "http://localhost:9222", Usage: "URL of the Matter sidecar"},
 		&cli.StringFlag{Name: "hap-pin", Value: "00102003", Usage: "HomeKit pairing PIN"},
-		&cli.StringFlag{Name: "hap-storage", Value: os.ExpandEnv("$HOME/.localitas/homebase/hap"), Usage: "HAP persistent storage directory"},
 	}
 }
 
@@ -83,7 +82,6 @@ func serveAction(ctx context.Context, cmd *cli.Command) error {
 	token := cmd.String("token")
 	sidecarURL := cmd.String("sidecar-url")
 	hapPin := cmd.String("hap-pin")
-	hapStorage := cmd.String("hap-storage")
 	c := newClient(cmd)
 
 	a := homebase.New(c, basePath, sidecarURL)
@@ -99,7 +97,7 @@ func serveAction(ctx context.Context, cmd *cli.Command) error {
 	}
 	defer a.Store.Close()
 
-	hapBridge := homebase.NewHAPBridge(a.Sidecar, a.Store, hapPin, hapStorage)
+	hapBridge := homebase.NewHAPBridge(a.Sidecar, a.Store, hapPin)
 	a.HAP = hapBridge
 
 	hapCtx, hapCancel := context.WithCancel(ctx)
