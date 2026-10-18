@@ -85,6 +85,7 @@ func serveAction(ctx context.Context, cmd *cli.Command) error {
 	c := newClient(cmd)
 
 	a := homebase.New(c, basePath, sidecarURL)
+	a.Sidecar.SetToken(token)
 
 	dbID, err := a.Install(ctx)
 	if err != nil {

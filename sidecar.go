@@ -12,15 +12,39 @@ import (
 type SidecarClient struct {
 	baseURL    string
 	httpClient *http.Client
+	auth       *bearerTransport
 }
 
 func NewSidecarClient(baseURL string) *SidecarClient {
+	auth := &bearerTransport{next: http.DefaultTransport}
 	return &SidecarClient{
 		baseURL: baseURL,
 		httpClient: &http.Client{
-			Timeout: 30 * time.Second,
+			Timeout:   30 * time.Second,
+			Transport: auth,
 		},
+		auth: auth,
 	}
+}
+
+// SetToken sets the app token sent with every request; the sidecar refuses
+// callers that do not prove who they are.
+func (sc *SidecarClient) SetToken(token string) {
+	sc.auth.token = token
+}
+
+type bearerTransport struct {
+	next  http.RoundTripper
+	token string
+}
+
+func (t *bearerTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	if t.token == "" {
+		return t.next.RoundTrip(req)
+	}
+	req = req.Clone(req.Context())
+	req.Header.Set("Authorization", "Bearer "+t.token)
+	return t.next.RoundTrip(req)
 }
 
 type SidecarDevice struct {

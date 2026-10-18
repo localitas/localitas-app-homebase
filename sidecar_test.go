@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -185,5 +186,43 @@ func TestSidecarClient_Commission_ErrorResponse(t *testing.T) {
 	_, err := sc.Commission("badcode")
 	if err == nil {
 		t.Fatal("expected error for 500 response")
+	}
+}
+
+// Every call to the sidecar carries the app token, which the sidecar
+// requires before it lists or controls any device.
+func TestSidecarClient_SendsTheAppToken(t *testing.T) {
+	var seen []string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		seen = append(seen, r.Method+" "+r.URL.Path+" "+r.Header.Get("Authorization"))
+		switch {
+		case r.URL.Path == "/devices":
+			json.NewEncoder(w).Encode([]SidecarDevice{})
+		case r.URL.Path == "/commission":
+			json.NewEncoder(w).Encode(SidecarCommissionResponse{NodeID: 1})
+		default:
+			json.NewEncoder(w).Encode(SidecarCommandResponse{Success: true})
+		}
+	}))
+	defer server.Close()
+
+	sc := NewSidecarClient(server.URL)
+	sc.SetToken("app-token")
+	if _, err := sc.ListDevices(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := sc.Commission("34970112332"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := sc.SendCommand(1, "OnOff", "Toggle", nil); err != nil {
+		t.Fatal(err)
+	}
+	for _, s := range seen {
+		if !strings.HasSuffix(s, " Bearer app-token") {
+			t.Errorf("request without the app token: %q", s)
+		}
+	}
+	if len(seen) != 3 {
+		t.Fatalf("requests seen: %v", seen)
 	}
 }
