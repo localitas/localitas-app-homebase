@@ -32,7 +32,7 @@ func main() {
 	app := &cli.Command{
 		Name:    "homebase-server",
 		Usage:   "Homebase IoT control panel",
-		Version: version,
+		Version: version + " (" + commit + ")",
 		Commands: []*cli.Command{
 			serveCommand(),
 			migrateCommand(),
