@@ -130,10 +130,7 @@ func serveAction(ctx context.Context, cmd *cli.Command) error {
 		slog.Warn("service registry failed", "error", err)
 	}
 
-	shutdown, err := homebase.BroadcastMDNS(addr.Port, homebase.DefaultHealth.Name)
-	if err != nil {
-		slog.Warn("mDNS broadcast failed", "error", err)
-	}
+	announcement := c.Announce(ln)
 
 	go func() {
 		sig := make(chan os.Signal, 1)
@@ -141,8 +138,8 @@ func serveAction(ctx context.Context, cmd *cli.Command) error {
 		<-sig
 		slog.Info("shutting down")
 		hapCancel()
-		if shutdown != nil {
-			shutdown()
+		if err := announcement.Withdraw(); err != nil {
+			slog.Warn("withdraw from core failed", "error", err)
 		}
 		os.Exit(0)
 	}()

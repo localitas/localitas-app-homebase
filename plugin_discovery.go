@@ -11,6 +11,9 @@ import (
 )
 
 const (
+	AppServiceType   = "_localitas-app._tcp"
+	AppServiceDomain = "local."
+
 	pluginScanInterval = 30 * time.Second
 	deviceSyncInterval = 60 * time.Second
 )
