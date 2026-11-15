@@ -4,7 +4,6 @@ go 1.27.1
 
 require (
 	github.com/brutella/hap v0.0.35
-	github.com/grandcat/zeroconf v1.0.0
 	github.com/localitas/localitas-go v0.1.12
 	github.com/mattn/go-sqlite3 v1.14.47
 	github.com/urfave/cli/v3 v3.9.1
@@ -15,7 +14,6 @@ replace github.com/localitas/localitas-go => /Users/didipkerabat/localitas-go
 require (
 	github.com/BurntSushi/toml v1.4.1-0.20240526193622-a339e1f7089c // indirect
 	github.com/brutella/dnssd v1.2.14 // indirect
-	github.com/cenkalti/backoff v2.2.1+incompatible // indirect
 	github.com/go-chi/chi v1.5.4 // indirect
 	github.com/gorilla/websocket v1.5.3 // indirect
 	github.com/miekg/dns v1.1.61 // indirect

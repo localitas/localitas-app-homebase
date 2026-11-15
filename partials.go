@@ -186,9 +186,9 @@ func (p *partialHandler) handleCreateVirtual(w http.ResponseWriter, r *http.Requ
 }
 
 func (p *partialHandler) handlePluginSettings(w http.ResponseWriter, r *http.Request) {
-	var plugins []DiscoveredPlugin
+	var plugins []PluginInfo
 	if p.app.Plugins != nil {
-		plugins = p.app.Plugins.ListPlugins()
+		plugins = p.app.Plugins.ListPlugins(r.Context())
 	}
 
 	credentials := make(map[string]string)

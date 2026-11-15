@@ -10,7 +10,7 @@ Homebase is a control panel for smart home devices. It commissions Matter/Thread
 
 - **Homebase** (Go, port 9221) — device registry, HAP bridge, REST API, UI, plugin discovery
 - **Matter Sidecar** (Python, port 9222) — thin REST wrapper over python-chip-controller for Matter protocol
-- **Plugins** (e.g. homebase-ring, port 9223) — standalone apps discovered via mDNS, synced automatically
+- **Plugins** (e.g. homebase-ring, port 9223) — apps Localitas serves that provide homebase's plugin interface; homebase follows them through Localitas
 
 ## Getting Started
 
@@ -39,11 +39,11 @@ Supported virtual types: `switch`, `dimmable_light`, `color_light`, `fan`, `lock
 ### 3. Set Up a Plugin (e.g. Ring)
 
 1. Store your Ring refresh token in Vault (key: `ring_refresh_token`)
-2. Start `homebase-ring` — it broadcasts via mDNS and Homebase discovers it automatically
+2. Start `homebase-ring` — once Localitas serves it, Homebase takes it on
 3. In Homebase UI, click the **Plugins** button in the sidebar
 4. Paste the Vault public ID for your Ring credential and click **Save**
 5. Homebase pushes the credential to the plugin, which authenticates and starts serving devices
-6. Ring devices appear in Homebase within 60 seconds
+6. Ring devices appear in Homebase as soon as the plugin reports them
 
 ## Sending Commands
 
@@ -90,17 +90,19 @@ All requests require `Authorization: Bearer {token}` header.
 
 ## Plugin Architecture
 
-Plugins are standalone apps that broadcast via mDNS with `plugin_type=homebase-plugin` TXT record. Homebase discovers them automatically and syncs their devices every 60 seconds.
+A plugin is any app Localitas serves whose `health.json` lists `homebase-devices/v1` in `provides`. Homebase follows Localitas's app changes: when such an app is registered it is taken on (configured, its devices read); when it is removed its devices go offline. Nothing polls: a plugin tells Homebase its devices changed by publishing `{"plugin": "<its app name>"}` on the `homebase` cache's `devices` channel, and Homebase then reads its devices. Homebase reaches plugins through Localitas (`/apps/ext/<plugin>/`), as the admin it runs as.
+
+A hint is only a hint: anyone with write scope can publish one, so Homebase never acts on its content, only reads the app list or a known plugin's devices.
 
 ### Writing a Plugin
 
-1. Create a standalone Go HTTP server with these endpoints:
-   - `GET /health.json` — must include `"plugin_type": "homebase-plugin"` and `"plugin_for": "homebase"`
-   - `GET /api/devices` — return array of devices
+1. Create a standalone app with these endpoints:
+   - `GET /health.json` — must list `"provides": ["homebase-devices/v1"]`
+   - `GET /api/devices` — return array of devices; answer an error (not an empty list) while not configured
    - `POST /api/devices/{id}/command` — accept commands
    - `POST /api/configure` — accept `{"vault_public_id": "..."}` for credential setup
-2. Broadcast via mDNS as `_localitas-app._tcp` with TXT records: `name=your-plugin`, `plugin_type=homebase-plugin`, `plugin_for=homebase`
-3. Use standard Makefile/plist pattern for launchd management
+2. Announce it to Localitas (`client.Announce`) or run it through the App Store
+3. Publish `{"plugin": "<name>"}` on `homebase`/`devices` whenever its devices change
 
 ### Plugin Credential Flow
 

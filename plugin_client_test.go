@@ -13,11 +13,7 @@ func TestPluginClient_FetchHealth(t *testing.T) {
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
-		json.NewEncoder(w).Encode(PluginHealth{
-			Name:       "homebase-ring",
-			PluginType: "homebase-plugin",
-			PluginFor:  "homebase",
-		})
+		w.Write([]byte(`{"name":"homebase-ring","provides":["notes-v1","homebase-devices/v1"]}`))
 	}))
 	defer server.Close()
 
@@ -29,8 +25,11 @@ func TestPluginClient_FetchHealth(t *testing.T) {
 	if health.Name != "homebase-ring" {
 		t.Errorf("expected name homebase-ring, got %q", health.Name)
 	}
-	if health.PluginType != "homebase-plugin" {
-		t.Errorf("expected plugin_type homebase-plugin, got %q", health.PluginType)
+	if !health.Implements(PluginInterface) {
+		t.Errorf("an app providing %s was not taken for a plugin: %+v", PluginInterface, health)
+	}
+	if health.Implements("homebase-devices/v2") {
+		t.Error("an app was taken to provide an interface version it does not list")
 	}
 }
 

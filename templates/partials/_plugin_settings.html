@@ -13,7 +13,7 @@
                 <div>
                     <h3 style="font-size: 1rem; font-weight: 600; margin: 0;">
                         <i data-lucide="plug" style="width: 16px; height: 16px; display: inline; vertical-align: middle; margin-right: 0.25rem;"></i>
-                        {{.Health.DisplayName}}
+                        {{.DisplayName}}
                     </h3>
                     <div style="font-size: 0.75rem; color: var(--color-text-secondary);">{{.Name}} · {{.URL}}</div>
                 </div>
@@ -51,7 +51,7 @@
         <div style="text-align: center; padding: 3rem; color: var(--color-text-secondary);">
             <i data-lucide="plug" style="width: 48px; height: 48px; margin: 0 auto 1rem; display: block;"></i>
             <p>No plugins discovered yet.</p>
-            <p style="font-size: 0.8125rem;">Start a homebase plugin (e.g. homebase-ring) and it will appear here automatically via mDNS.</p>
+            <p style="font-size: 0.8125rem;">Install a homebase plugin (e.g. homebase-ring) and it appears here as soon as Localitas serves it.</p>
         </div>
         {{end}}
     </div>
