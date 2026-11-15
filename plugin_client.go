@@ -12,13 +12,22 @@ import (
 )
 
 type PluginHealth struct {
-	Name        string `json:"name"`
-	DisplayName string `json:"display_name"`
-	Icon        string `json:"icon"`
-	Version     string `json:"version"`
-	Status      string `json:"status"`
-	PluginType  string `json:"plugin_type"`
-	PluginFor   string `json:"plugin_for"`
+	Name        string   `json:"name"`
+	DisplayName string   `json:"display_name"`
+	Icon        string   `json:"icon"`
+	Version     string   `json:"version"`
+	Status      string   `json:"status"`
+	Provides    []string `json:"provides"`
+}
+
+// Implements reports whether the app provides iface.
+func (h *PluginHealth) Implements(iface string) bool {
+	for _, p := range h.Provides {
+		if p == iface {
+			return true
+		}
+	}
+	return false
 }
 
 type PluginDevice struct {
@@ -140,16 +149,21 @@ func (pc *PluginClient) Healthy() bool {
 	return resp.StatusCode == http.StatusOK
 }
 
-// systemTokenTransport sends the API token core gave this app on every call
-// to a plugin: plugins admit homebase as core itself.
+// systemToken is the API token core gave this app.
+func systemToken() string {
+	if token := os.Getenv("LOCALITAS_API_TOKEN"); token != "" {
+		return token
+	}
+	return client.DefaultToken()
+}
+
+// systemTokenTransport sends homebase's API token with every call to a
+// plugin. The call goes through core's proxy, which tells the plugin who is
+// calling (homebase's admin identity).
 type systemTokenTransport struct{}
 
 func (systemTokenTransport) RoundTrip(req *http.Request) (*http.Response, error) {
-	token := os.Getenv("LOCALITAS_API_TOKEN")
-	if token == "" {
-		token = client.DefaultToken()
-	}
 	req = req.Clone(req.Context())
-	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("Authorization", "Bearer "+systemToken())
 	return http.DefaultTransport.RoundTrip(req)
 }

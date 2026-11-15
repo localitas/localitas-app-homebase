@@ -18,7 +18,7 @@ type App struct {
 	Sidecar    *SidecarClient
 	SidecarURL string
 	HAP        *HAPBridge
-	Plugins    *PluginDiscovery
+	Plugins    *PluginRegistry
 	client     *client.Client
 }
 

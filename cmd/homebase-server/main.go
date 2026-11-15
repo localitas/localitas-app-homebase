@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	homebase "github.com/localitas/localitas-app-homebase"
 	"github.com/localitas/localitas-go"
@@ -67,6 +68,25 @@ func newClient(cmd *cli.Command) *client.Client {
 	return c
 }
 
+// startPlugins starts following core for plugins, trying again while core
+// is not up yet (homebase can start before it).
+func startPlugins(ctx context.Context, plugins *homebase.PluginRegistry) {
+	wait := time.Second
+	for {
+		err := plugins.Start(ctx)
+		if err == nil {
+			return
+		}
+		slog.Warn("plugins not followed yet; trying again", "retry_in", wait, "error", err)
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(wait):
+		}
+		wait = min(2*wait, 30*time.Second)
+	}
+}
+
 func serveCommand() *cli.Command {
 	return &cli.Command{
 		Name:   "serve",
@@ -109,10 +129,9 @@ func serveAction(ctx context.Context, cmd *cli.Command) error {
 		slog.Info("HAP bridge started", "pin", hapPin)
 	}
 
-	pluginDiscovery := homebase.NewPluginDiscovery(a.Store, hapBridge)
-	a.Plugins = pluginDiscovery
-	pluginDiscovery.Start(hapCtx)
-	slog.Info("plugin discovery started")
+	plugins := homebase.NewPluginRegistry(c, coreURL, a.Store, hapBridge)
+	a.Plugins = plugins
+	go startPlugins(hapCtx, plugins)
 
 	mux := http.NewServeMux()
 	a.RegisterRoutes(mux)

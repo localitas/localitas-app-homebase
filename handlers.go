@@ -351,10 +351,10 @@ func (h *handler) handleGetSnapshot(w http.ResponseWriter, r *http.Request) {
 
 func (h *handler) handleListPlugins(w http.ResponseWriter, r *http.Request) {
 	if h.app.Plugins == nil {
-		writeJSON(w, r, http.StatusOK, []DiscoveredPlugin{})
+		writeJSON(w, r, http.StatusOK, []PluginInfo{})
 		return
 	}
-	writeJSON(w, r, http.StatusOK, h.app.Plugins.ListPlugins())
+	writeJSON(w, r, http.StatusOK, h.app.Plugins.ListPlugins(r.Context()))
 }
 
 func (h *handler) handleGetPluginCredential(w http.ResponseWriter, r *http.Request) {
