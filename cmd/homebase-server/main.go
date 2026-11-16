@@ -144,11 +144,6 @@ func serveAction(ctx context.Context, cmd *cli.Command) error {
 	addr := ln.Addr().(*net.TCPAddr)
 	fmt.Printf("homebase-server listening on http://localhost:%d\n", addr.Port)
 
-	selfURL := fmt.Sprintf("http://localhost:%d", addr.Port)
-	if err := c.RegisterService(ctx, "homebase", selfURL); err != nil {
-		slog.Warn("service registry failed", "error", err)
-	}
-
 	announcement := c.Announce(ln)
 
 	go func() {
