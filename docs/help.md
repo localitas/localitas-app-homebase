@@ -9,7 +9,7 @@ Homebase is a control panel for smart home devices. It commissions Matter/Thread
 ## Architecture
 
 - **Homebase** (Go, port 9221) — device registry, HAP bridge, REST API, UI, plugin discovery
-- **Matter Sidecar** (Python, port 9222) — thin REST wrapper over python-chip-controller for Matter protocol
+- **Matter Sidecar** (Python, port 9222) — thin REST wrapper over python-matter-server for the Matter protocol; Homebase reaches it at `--sidecar-url` (default `http://localhost:9222`)
 - **Plugins** (e.g. homebase-ring, port 9223) — apps Localitas serves that provide homebase's plugin interface; homebase follows them through Localitas
 
 ## Getting Started
