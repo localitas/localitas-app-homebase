@@ -6,132 +6,97 @@ import (
 	"html/template"
 	"net/http"
 	"strings"
+
+	client "github.com/localitas/localitas-go"
 )
 
-type APIEndpoint struct {
-	Method      string     `json:"method"`
-	Path        string     `json:"path"`
-	Summary     string     `json:"summary"`
-	QueryParams []APIParam `json:"query_params,omitempty"`
-	RequestBody *APIBody   `json:"request_body,omitempty"`
-	Response    *APIBody   `json:"response,omitempty"`
-}
-
-type APIParam struct {
-	Name        string `json:"name"`
-	Type        string `json:"type"`
-	Required    bool   `json:"required"`
-	Description string `json:"description"`
-}
-
-type APIBody struct {
-	ContentType string `json:"content_type"`
-	Example     string `json:"example"`
-}
-
-type APIFieldDoc struct {
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	Example     string `json:"example"`
-}
-
-type APIDoc struct {
-	AppName     string        `json:"app_name"`
-	Version     string        `json:"version"`
-	Description string        `json:"description"`
-	Keywords    []string      `json:"keywords,omitempty"`
-	Fields      []APIFieldDoc `json:"fields,omitempty"`
-	Endpoints   []APIEndpoint `json:"endpoints"`
-}
-
-var HomebaseAPIDoc = APIDoc{
+var HomebaseAPIDoc = client.APISpec{
 	AppName:     "Homebase",
 	Version:     "0.1.0",
 	Description: "Matter smart home control panel with HomeKit bridge and REST API",
 	Keywords:    []string{"homebase", "matter", "homekit", "iot", "smart home", "devices", "automation", "lights", "thermostat", "lock"},
-	Endpoints: []APIEndpoint{
+	Endpoints: []client.APIEndpoint{
 		{
 			Method:  "GET",
 			Path:    "/api/devices",
 			Summary: "List all devices",
-			QueryParams: []APIParam{
+			QueryParams: []client.APIParam{
 				{Name: "room", Type: "string", Description: "Filter by room name"},
 			},
-			Response: &APIBody{ContentType: "application/json", Example: `[{"id":"abc...","node_id":1,"name":"Living Room Light","device_type":"dimmable_light","room":"Living Room","clusters":["OnOff","LevelControl"]}]`},
+			Response: &client.APIBody{ContentType: "application/json", Example: `[{"id":"abc...","node_id":1,"name":"Living Room Light","device_type":"dimmable_light","room":"Living Room","clusters":["OnOff","LevelControl"]}]`},
 		},
 		{
 			Method:      "POST",
 			Path:        "/api/devices",
 			Summary:     "Commission a new Matter device",
-			RequestBody: &APIBody{ContentType: "application/json", Example: `{"setup_code":"34970112332","name":"Kitchen Light","room":"Kitchen"}`},
-			Response:    &APIBody{ContentType: "application/json", Example: `{"id":"abc...","node_id":2,"name":"Kitchen Light","device_type":"dimmable_light","room":"Kitchen","clusters":["OnOff","LevelControl"]}`},
+			RequestBody: &client.APIBody{ContentType: "application/json", Example: `{"setup_code":"34970112332","name":"Kitchen Light","room":"Kitchen"}`},
+			Response:    &client.APIBody{ContentType: "application/json", Example: `{"id":"abc...","node_id":2,"name":"Kitchen Light","device_type":"dimmable_light","room":"Kitchen","clusters":["OnOff","LevelControl"]}`},
 		},
 		{
 			Method:   "GET",
 			Path:     "/api/devices/{id}",
 			Summary:  "Get device by ID",
-			Response: &APIBody{ContentType: "application/json", Example: `{"id":"abc...","node_id":1,"name":"Living Room Light","device_type":"dimmable_light","room":"Living Room"}`},
+			Response: &client.APIBody{ContentType: "application/json", Example: `{"id":"abc...","node_id":1,"name":"Living Room Light","device_type":"dimmable_light","room":"Living Room"}`},
 		},
 		{
 			Method:   "GET",
 			Path:     "/api/devices/{id}/state",
 			Summary:  "Get live device state from Matter fabric",
-			Response: &APIBody{ContentType: "application/json", Example: `{"node_id":1,"online":true,"clusters":{"OnOff":{"OnOff":true},"LevelControl":{"CurrentLevel":200}}}`},
+			Response: &client.APIBody{ContentType: "application/json", Example: `{"node_id":1,"online":true,"clusters":{"OnOff":{"OnOff":true},"LevelControl":{"CurrentLevel":200}}}`},
 		},
 		{
 			Method:      "PUT",
 			Path:        "/api/devices/{id}",
 			Summary:     "Update device name or room",
-			RequestBody: &APIBody{ContentType: "application/json", Example: `{"name":"Desk Lamp","room":"Office"}`},
-			Response:    &APIBody{ContentType: "application/json", Example: `{"id":"abc...","name":"Desk Lamp","room":"Office"}`},
+			RequestBody: &client.APIBody{ContentType: "application/json", Example: `{"name":"Desk Lamp","room":"Office"}`},
+			Response:    &client.APIBody{ContentType: "application/json", Example: `{"id":"abc...","name":"Desk Lamp","room":"Office"}`},
 		},
 		{
 			Method:   "DELETE",
 			Path:     "/api/devices/{id}",
 			Summary:  "Decommission and remove a device",
-			Response: &APIBody{ContentType: "application/json", Example: `{"success":true}`},
+			Response: &client.APIBody{ContentType: "application/json", Example: `{"success":true}`},
 		},
 		{
 			Method:      "POST",
 			Path:        "/api/devices/{id}/command",
 			Summary:     "Send a command to a device",
-			RequestBody: &APIBody{ContentType: "application/json", Example: `{"cluster":"OnOff","command":"On","arguments":{}}`},
-			Response:    &APIBody{ContentType: "application/json", Example: `{"success":true}`},
+			RequestBody: &client.APIBody{ContentType: "application/json", Example: `{"cluster":"OnOff","command":"On","arguments":{}}`},
+			Response:    &client.APIBody{ContentType: "application/json", Example: `{"success":true}`},
 		},
 		{
 			Method:      "POST",
 			Path:        "/api/virtual-devices",
 			Summary:     "Create a virtual (dummy) device",
-			RequestBody: &APIBody{ContentType: "application/json", Example: `{"name":"Test Switch","room":"Office","device_type":"switch"}`},
-			Response:    &APIBody{ContentType: "application/json", Example: `{"id":"abc...","node_id":1000000,"name":"Test Switch","device_type":"switch","room":"Office","virtual":true}`},
+			RequestBody: &client.APIBody{ContentType: "application/json", Example: `{"name":"Test Switch","room":"Office","device_type":"switch"}`},
+			Response:    &client.APIBody{ContentType: "application/json", Example: `{"id":"abc...","node_id":1000000,"name":"Test Switch","device_type":"switch","room":"Office","virtual":true}`},
 		},
 		{
 			Method:   "GET",
 			Path:     "/api/rooms",
 			Summary:  "List all rooms",
-			Response: &APIBody{ContentType: "application/json", Example: `["Living Room","Kitchen","Bedroom"]`},
+			Response: &client.APIBody{ContentType: "application/json", Example: `["Living Room","Kitchen","Bedroom"]`},
 		},
 		{
 			Method:   "GET",
 			Path:     "/api/clusters",
 			Summary:  "List supported Matter clusters and their commands",
-			Response: &APIBody{ContentType: "application/json", Example: `{"OnOff":{"name":"OnOff","commands":[{"name":"On"},{"name":"Off"},{"name":"Toggle"}]}}`},
+			Response: &client.APIBody{ContentType: "application/json", Example: `{"OnOff":{"name":"OnOff","commands":[{"name":"On"},{"name":"Off"},{"name":"Toggle"}]}}`},
 		},
 		{
 			Method:   "GET",
 			Path:     "/api/sidecar/health",
 			Summary:  "Check Matter sidecar health",
-			Response: &APIBody{ContentType: "application/json", Example: `{"sidecar_healthy":true,"sidecar_url":"http://localhost:9222"}`},
+			Response: &client.APIBody{ContentType: "application/json", Example: `{"sidecar_healthy":true,"sidecar_url":"http://localhost:9222"}`},
 		},
 	},
 }
 
 func HandleSwagger(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(HomebaseAPIDoc)
+	HomebaseAPIDoc.ServeHTTP(w, r)
 }
 
-func RenderDocsHTML(doc APIDoc) template.HTML {
+func RenderDocsHTML(doc client.APISpec) template.HTML {
 	var sb strings.Builder
 	sb.WriteString(`<h3 style="font-size: 0.875rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-text-secondary); margin-bottom: 1rem;">API Endpoints</h3><div class="accordion-list">`)
 	for _, ep := range doc.Endpoints {
