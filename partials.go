@@ -45,10 +45,19 @@ func (p *partialHandler) handleDeviceDetail(w http.ResponseWriter, r *http.Reque
 		p.handleEmpty(w, r)
 		return
 	}
-	data := map[string]interface{}{
-		"Device": dev,
-	}
-	renderPartial(w, "templates/partials/_device_detail.html", "device_detail", data)
+	renderPartial(w, "templates/partials/_device_detail.html", "device_detail", deviceDetailData{Device: dev})
+}
+
+// deviceDetailData is _device_detail.html's data.
+type deviceDetailData struct {
+	Device *Device
+}
+
+// pluginSettingsData is _plugin_settings.html's data: the plugins found and
+// each one's vault credential public ID by plugin name.
+type pluginSettingsData struct {
+	Plugins     []PluginInfo
+	Credentials map[string]string
 }
 
 func (p *partialHandler) handleUpdateDevice(w http.ResponseWriter, r *http.Request) {
@@ -134,8 +143,7 @@ func (p *partialHandler) handleCommission(w http.ResponseWriter, r *http.Request
 		}
 	}
 
-	data := map[string]interface{}{"Device": dev}
-	renderPartialWithOOB(w, "templates/partials/_device_detail.html", "device_detail", data, p, r)
+	renderPartialWithOOB(w, "templates/partials/_device_detail.html", "device_detail", deviceDetailData{Device: dev}, p, r)
 }
 
 func (p *partialHandler) handleCreateVirtual(w http.ResponseWriter, r *http.Request) {
@@ -181,8 +189,7 @@ func (p *partialHandler) handleCreateVirtual(w http.ResponseWriter, r *http.Requ
 		}
 	}
 
-	data := map[string]interface{}{"Device": dev}
-	renderPartialWithOOB(w, "templates/partials/_device_detail.html", "device_detail", data, p, r)
+	renderPartialWithOOB(w, "templates/partials/_device_detail.html", "device_detail", deviceDetailData{Device: dev}, p, r)
 }
 
 func (p *partialHandler) handlePluginSettings(w http.ResponseWriter, r *http.Request) {
@@ -197,11 +204,10 @@ func (p *partialHandler) handlePluginSettings(w http.ResponseWriter, r *http.Req
 		credentials[c.PluginName] = c.VaultPublicID
 	}
 
-	data := map[string]interface{}{
-		"Plugins":     plugins,
-		"Credentials": credentials,
-	}
-	renderPartial(w, "templates/partials/_plugin_settings.html", "plugin_settings", data)
+	renderPartial(w, "templates/partials/_plugin_settings.html", "plugin_settings", pluginSettingsData{
+		Plugins:     plugins,
+		Credentials: credentials,
+	})
 }
 
 func (p *partialHandler) handleSetPluginCredential(w http.ResponseWriter, r *http.Request) {

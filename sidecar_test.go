@@ -84,8 +84,8 @@ func TestSidecarClient_GetDeviceState(t *testing.T) {
 		json.NewEncoder(w).Encode(SidecarDeviceState{
 			NodeID: 1,
 			Online: true,
-			Clusters: map[string]map[string]interface{}{
-				"OnOff": {"OnOff": true},
+			Clusters: map[string]ClusterAttributes{
+				"OnOff": {"OnOff": "true"},
 			},
 		})
 	}))
@@ -99,7 +99,7 @@ func TestSidecarClient_GetDeviceState(t *testing.T) {
 	if !state.Online {
 		t.Error("expected device to be online")
 	}
-	if state.Clusters["OnOff"]["OnOff"] != true {
+	if on, ok := attrAs[bool](state.Clusters["OnOff"], "OnOff"); !ok || !on {
 		t.Error("expected OnOff to be true")
 	}
 }

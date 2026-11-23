@@ -190,6 +190,11 @@ func (h *handler) handleCommand(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, r, http.StatusBadRequest, "cluster and command are required")
 		return
 	}
+	args, err := commandArguments(cmd.Arguments)
+	if err != nil {
+		writeErr(w, r, http.StatusBadRequest, "invalid request body: %v", err)
+		return
+	}
 
 	clusterDef, ok := ClusterDefFor(cmd.Cluster)
 	if !ok {
@@ -214,7 +219,7 @@ func (h *handler) handleCommand(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result, err := h.app.Sidecar.SendCommand(dev.NodeID, cmd.Cluster, cmd.Command, cmd.Arguments)
+	result, err := h.app.Sidecar.SendCommand(dev.NodeID, cmd.Cluster, cmd.Command, args)
 	if err != nil {
 		writeErr(w, r, http.StatusBadGateway, "command failed: %v", err)
 		return
@@ -419,12 +424,17 @@ func (h *handler) handleListClusters(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *handler) handleSidecarHealth(w http.ResponseWriter, r *http.Request) {
-	healthy := h.app.Sidecar.Healthy()
-	status := map[string]interface{}{
-		"sidecar_healthy": healthy,
-		"sidecar_url":     h.app.SidecarURL,
-	}
-	writeJSON(w, r, http.StatusOK, status)
+	writeJSON(w, r, http.StatusOK, sidecarHealthResponse{
+		SidecarHealthy: h.app.Sidecar.Healthy(),
+		SidecarURL:     h.app.SidecarURL,
+	})
+}
+
+// sidecarHealthResponse is GET /api/sidecar/health's answer, fields in key
+// order as the map this replaced marshaled them.
+type sidecarHealthResponse struct {
+	SidecarHealthy bool   `json:"sidecar_healthy" yaml:"sidecar_healthy"`
+	SidecarURL     string `json:"sidecar_url" yaml:"sidecar_url"`
 }
 
 func writeJSON(w http.ResponseWriter, r *http.Request, status int, v interface{}) {
