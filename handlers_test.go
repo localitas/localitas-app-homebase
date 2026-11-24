@@ -59,9 +59,11 @@ func TestHandleSidecarHealth_Healthy(t *testing.T) {
 		t.Fatalf("expected 200, got %d", w.Code)
 	}
 
-	var status map[string]interface{}
-	json.Unmarshal(w.Body.Bytes(), &status)
-	if status["sidecar_healthy"] != true {
+	var status sidecarHealthResponse
+	if err := json.Unmarshal(w.Body.Bytes(), &status); err != nil {
+		t.Fatal(err)
+	}
+	if !status.SidecarHealthy {
 		t.Error("expected sidecar_healthy to be true")
 	}
 }
@@ -75,10 +77,21 @@ func TestHandleSidecarHealth_Unhealthy(t *testing.T) {
 
 	h.handleSidecarHealth(w, req)
 
-	var status map[string]interface{}
-	json.Unmarshal(w.Body.Bytes(), &status)
-	if status["sidecar_healthy"] != false {
-		t.Error("expected sidecar_healthy to be false")
+	if got, want := w.Body.String(), `{"sidecar_healthy":false,"sidecar_url":"http://localhost:1"}`+"\n"; got != want {
+		t.Errorf("got %s, want %s", got, want)
+	}
+}
+
+func TestHandleSidecarHealth_YAML(t *testing.T) {
+	h := &handler{app: newTestApp("http://localhost:1")}
+	req := httptest.NewRequest("GET", "/api/sidecar/health", nil)
+	req.Header.Set("Accept", "application/yaml")
+	w := httptest.NewRecorder()
+
+	h.handleSidecarHealth(w, req)
+
+	if got, want := w.Body.String(), "sidecar_healthy: false\nsidecar_url: http://localhost:1\n"; got != want {
+		t.Errorf("got %q, want %q", got, want)
 	}
 }
 

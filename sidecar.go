@@ -56,9 +56,9 @@ type SidecarDevice struct {
 }
 
 type SidecarDeviceState struct {
-	NodeID   uint64                            `json:"node_id"`
-	Online   bool                              `json:"online"`
-	Clusters map[string]map[string]interface{} `json:"clusters"`
+	NodeID   uint64                       `json:"node_id"`
+	Online   bool                         `json:"online"`
+	Clusters map[string]ClusterAttributes `json:"clusters"`
 }
 
 type SidecarCommissionRequest struct {
@@ -72,10 +72,12 @@ type SidecarCommissionResponse struct {
 	Clusters []string `json:"clusters"`
 }
 
+// SidecarCommandRequest is the sidecar's POST /devices/{id}/command body.
+// Arguments is a JSON object (see commandArguments), left out when nil.
 type SidecarCommandRequest struct {
-	Cluster   string                 `json:"cluster"`
-	Command   string                 `json:"command"`
-	Arguments map[string]interface{} `json:"arguments,omitempty"`
+	Cluster   string          `json:"cluster"`
+	Command   string          `json:"command"`
+	Arguments json.RawMessage `json:"arguments,omitempty"`
 }
 
 type SidecarCommandResponse struct {
@@ -164,7 +166,7 @@ func (sc *SidecarClient) GetDeviceState(nodeID uint64) (*SidecarDeviceState, err
 	return &state, nil
 }
 
-func (sc *SidecarClient) SendCommand(nodeID uint64, cluster, command string, args map[string]interface{}) (*SidecarCommandResponse, error) {
+func (sc *SidecarClient) SendCommand(nodeID uint64, cluster, command string, args json.RawMessage) (*SidecarCommandResponse, error) {
 	body, err := json.Marshal(SidecarCommandRequest{
 		Cluster:   cluster,
 		Command:   command,

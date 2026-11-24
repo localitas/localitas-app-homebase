@@ -2,6 +2,7 @@ package homebase
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"sync"
 	"time"
@@ -122,85 +123,41 @@ func (h *HAPBridge) syncAllDevices() {
 }
 
 func (h *HAPBridge) applyState(hd *hapDevice, state *SidecarDeviceState) {
-	if onoff, ok := state.Clusters["OnOff"]; ok {
-		if val, ok := onoff["OnOff"]; ok {
-			if b, ok := val.(bool); ok {
-				if hd.switchSvc != nil {
-					hd.switchSvc.On.SetValue(b)
-				}
-				if hd.lightSvc != nil {
-					hd.lightSvc.On.SetValue(b)
-				}
-			}
+	if b, ok := attrAs[bool](state.Clusters["OnOff"], "OnOff"); ok {
+		if hd.switchSvc != nil {
+			hd.switchSvc.On.SetValue(b)
+		}
+		if hd.lightSvc != nil {
+			hd.lightSvc.On.SetValue(b)
 		}
 	}
 
-	if level, ok := state.Clusters["LevelControl"]; ok {
-		if val, ok := level["CurrentLevel"]; ok {
-			if hd.brightness != nil {
-				if f, ok := val.(float64); ok {
-					pct := int(f / 254.0 * 100.0)
-					hd.brightness.SetValue(pct)
-				}
-			}
-		}
+	if f, ok := attrAs[float64](state.Clusters["LevelControl"], "CurrentLevel"); ok && hd.brightness != nil {
+		hd.brightness.SetValue(int(f / 254.0 * 100.0))
 	}
 
-	if color, ok := state.Clusters["ColorControl"]; ok {
-		if val, ok := color["CurrentHue"]; ok {
-			if hd.hue != nil {
-				if f, ok := val.(float64); ok {
-					hd.hue.SetValue(f / 254.0 * 360.0)
-				}
-			}
-		}
-		if val, ok := color["CurrentSaturation"]; ok {
-			if hd.saturation != nil {
-				if f, ok := val.(float64); ok {
-					hd.saturation.SetValue(f / 254.0 * 100.0)
-				}
-			}
-		}
+	color := state.Clusters["ColorControl"]
+	if f, ok := attrAs[float64](color, "CurrentHue"); ok && hd.hue != nil {
+		hd.hue.SetValue(f / 254.0 * 360.0)
+	}
+	if f, ok := attrAs[float64](color, "CurrentSaturation"); ok && hd.saturation != nil {
+		hd.saturation.SetValue(f / 254.0 * 100.0)
 	}
 
-	if thermo, ok := state.Clusters["Thermostat"]; ok {
-		if hd.thermoSvc != nil {
-			if val, ok := thermo["LocalTemperature"]; ok {
-				if f, ok := val.(float64); ok {
-					hd.thermoSvc.CurrentTemperature.SetValue(f / 100.0)
-				}
-			}
-		}
+	if f, ok := attrAs[float64](state.Clusters["Thermostat"], "LocalTemperature"); ok && hd.thermoSvc != nil {
+		hd.thermoSvc.CurrentTemperature.SetValue(f / 100.0)
 	}
 
-	if temp, ok := state.Clusters["TemperatureMeasurement"]; ok {
-		if hd.tempSvc != nil {
-			if val, ok := temp["MeasuredValue"]; ok {
-				if f, ok := val.(float64); ok {
-					hd.tempSvc.CurrentTemperature.SetValue(f / 100.0)
-				}
-			}
-		}
+	if f, ok := attrAs[float64](state.Clusters["TemperatureMeasurement"], "MeasuredValue"); ok && hd.tempSvc != nil {
+		hd.tempSvc.CurrentTemperature.SetValue(f / 100.0)
 	}
 
-	if occ, ok := state.Clusters["OccupancySensing"]; ok {
-		if hd.occSvc != nil {
-			if val, ok := occ["Occupancy"]; ok {
-				if f, ok := val.(float64); ok {
-					hd.occSvc.OccupancyDetected.SetValue(int(f))
-				}
-			}
-		}
+	if f, ok := attrAs[float64](state.Clusters["OccupancySensing"], "Occupancy"); ok && hd.occSvc != nil {
+		hd.occSvc.OccupancyDetected.SetValue(int(f))
 	}
 
-	if lock, ok := state.Clusters["DoorLock"]; ok {
-		if hd.lockSvc != nil {
-			if val, ok := lock["LockState"]; ok {
-				if f, ok := val.(float64); ok {
-					hd.lockSvc.LockCurrentState.SetValue(int(f))
-				}
-			}
-		}
+	if f, ok := attrAs[float64](state.Clusters["DoorLock"], "LockState"); ok && hd.lockSvc != nil {
+		hd.lockSvc.LockCurrentState.SetValue(int(f))
 	}
 }
 
@@ -289,11 +246,7 @@ func (h *HAPBridge) buildLightbulb(info accessory.Info, dev *Device, hd *hapDevi
 
 	bright := characteristic.NewBrightness()
 	bright.OnValueRemoteUpdate(func(v int) {
-		level := int(float64(v) / 100.0 * 254.0)
-		h.sendCommand(dev.NodeID, "LevelControl", "MoveToLevel", map[string]interface{}{
-			"level":           level,
-			"transition_time": 5,
-		})
+		sendCommandWith(h, dev.NodeID, "LevelControl", "MoveToLevel", moveToLevelFromBrightness(v))
 	})
 	svc.AddC(bright.C)
 
@@ -316,33 +269,17 @@ func (h *HAPBridge) buildColorLight(info accessory.Info, dev *Device, hd *hapDev
 
 	bright := characteristic.NewBrightness()
 	bright.OnValueRemoteUpdate(func(v int) {
-		level := int(float64(v) / 100.0 * 254.0)
-		h.sendCommand(dev.NodeID, "LevelControl", "MoveToLevel", map[string]interface{}{
-			"level":           level,
-			"transition_time": 5,
-		})
+		sendCommandWith(h, dev.NodeID, "LevelControl", "MoveToLevel", moveToLevelFromBrightness(v))
 	})
 	svc.AddC(bright.C)
 
 	hueC := characteristic.NewHue()
 	satC := characteristic.NewSaturation()
 	hueC.OnValueRemoteUpdate(func(v float64) {
-		hueVal := int(v / 360.0 * 254.0)
-		satVal := int(satC.Value() / 100.0 * 254.0)
-		h.sendCommand(dev.NodeID, "ColorControl", "MoveToHueAndSaturation", map[string]interface{}{
-			"hue":             hueVal,
-			"saturation":      satVal,
-			"transition_time": 5,
-		})
+		sendCommandWith(h, dev.NodeID, "ColorControl", "MoveToHueAndSaturation", moveToHueAndSaturationFromHAP(v, satC.Value()))
 	})
 	satC.OnValueRemoteUpdate(func(v float64) {
-		hueVal := int(hueC.Value() / 360.0 * 254.0)
-		satVal := int(v / 100.0 * 254.0)
-		h.sendCommand(dev.NodeID, "ColorControl", "MoveToHueAndSaturation", map[string]interface{}{
-			"hue":             hueVal,
-			"saturation":      satVal,
-			"transition_time": 5,
-		})
+		sendCommandWith(h, dev.NodeID, "ColorControl", "MoveToHueAndSaturation", moveToHueAndSaturationFromHAP(hueC.Value(), v))
 	})
 	svc.AddC(hueC.C)
 	svc.AddC(satC.C)
@@ -359,11 +296,7 @@ func (h *HAPBridge) buildThermostat(info accessory.Info, dev *Device, hd *hapDev
 	acc := accessory.New(info, accessory.TypeThermostat)
 	svc := service.NewThermostat()
 	svc.TargetTemperature.OnValueRemoteUpdate(func(v float64) {
-		setpoint := int(v * 100)
-		h.sendCommand(dev.NodeID, "Thermostat", "SetpointRaiseLower", map[string]interface{}{
-			"mode":   0,
-			"amount": setpoint,
-		})
+		sendCommandWith(h, dev.NodeID, "Thermostat", "SetpointRaiseLower", setpointRaiseLowerArgs{Mode: 0, Amount: int(v * 100)})
 	})
 	acc.AddS(svc.S)
 	hd.acc = acc
@@ -416,7 +349,50 @@ func (h *HAPBridge) buildOccupancySensor(info accessory.Info, hd *hapDevice) {
 	hd.occSvc = svc
 }
 
-func (h *HAPBridge) sendCommand(nodeID uint64, cluster, command string, args map[string]interface{}) {
+// The arguments HAP sends with a Matter command, fields in key order as
+// the maps they replaced marshaled them.
+type moveToLevelArgs struct {
+	Level          int `json:"level"`
+	TransitionTime int `json:"transition_time"`
+}
+
+type moveToHueAndSaturationArgs struct {
+	Hue            int `json:"hue"`
+	Saturation     int `json:"saturation"`
+	TransitionTime int `json:"transition_time"`
+}
+
+type setpointRaiseLowerArgs struct {
+	Amount int `json:"amount"`
+	Mode   int `json:"mode"`
+}
+
+// moveToLevelFromBrightness is MoveToLevel for HAP brightness pct (0-100).
+func moveToLevelFromBrightness(pct int) moveToLevelArgs {
+	return moveToLevelArgs{Level: int(float64(pct) / 100.0 * 254.0), TransitionTime: 5}
+}
+
+// moveToHueAndSaturationFromHAP is MoveToHueAndSaturation for HAP hue
+// (0-360) and saturation (0-100).
+func moveToHueAndSaturationFromHAP(hue, saturation float64) moveToHueAndSaturationArgs {
+	return moveToHueAndSaturationArgs{
+		Hue:            int(hue / 360.0 * 254.0),
+		Saturation:     int(saturation / 100.0 * 254.0),
+		TransitionTime: 5,
+	}
+}
+
+// sendCommandWith sends a command with one of HAP's typed arguments.
+func sendCommandWith[A moveToLevelArgs | moveToHueAndSaturationArgs | setpointRaiseLowerArgs](h *HAPBridge, nodeID uint64, cluster, command string, args A) {
+	b, err := json.Marshal(args)
+	if err != nil {
+		logger.Error("HAP command arguments", "node_id", nodeID, "cluster", cluster, "command", command, "error", err)
+		return
+	}
+	h.sendCommand(nodeID, cluster, command, b)
+}
+
+func (h *HAPBridge) sendCommand(nodeID uint64, cluster, command string, args json.RawMessage) {
 	result, err := h.sidecar.SendCommand(nodeID, cluster, command, args)
 	if err != nil {
 		logger.Error("HAP command error", "node_id", nodeID, "cluster", cluster, "command", command, "error", err)
